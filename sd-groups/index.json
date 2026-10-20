@@ -1,0 +1,246 @@
+[
+  {
+    "file": "library-01-9bdb9f55.ocg",
+    "name": "Library 01",
+    "bytes": 2366512,
+    "max_decoded": 1296512,
+    "ram_required_after_framebuffers": 5170215,
+    "faces": [
+      {
+        "slug": "untitled-theme-r0du",
+        "name": "Swiss RAILWAY",
+        "author": "JPS",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "pip-boy-2000",
+        "name": "Pip-Orb 2000",
+        "author": "Baer_Tiger_Werker",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "neravio-luminara-marin-myy3",
+        "name": "Neravio Luminara Marina",
+        "author": "Lerxtwood",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "aviator-jwod",
+        "name": "B&R Gyrocompass Aviator",
+        "author": "Lerxtwood",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "big-pilot-aviator-1t8d",
+        "name": "Big Pilot Aviator",
+        "author": "Lerxtwood",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "aviator-kfa6",
+        "name": "Panerai Punk",
+        "author": "Lerxtwood",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-82d9",
+        "name": "Little Ben",
+        "author": "Henri V.",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-waxm",
+        "name": "Green modern simple",
+        "author": "Lee Chiddention",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-n4yb",
+        "name": "TAG wanna be",
+        "author": "Lee Chiddention",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-x2ts",
+        "name": "Tempus Fugit (v2)",
+        "author": "JPS",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-uh5k",
+        "name": "ORBLEX",
+        "author": "JPS",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-qjyh",
+        "name": "ORB",
+        "author": "Henri V.",
+        "license": "CC0 1.0"
+      }
+    ],
+    "blue_meridian_shared": true
+  },
+  {
+    "file": "library-02-3f7eeb4a.ocg",
+    "name": "Library 02",
+    "bytes": 3081989,
+    "max_decoded": 1234274,
+    "ram_required_after_framebuffers": 5804092,
+    "faces": [
+      {
+        "slug": "untitled-theme-6r4v",
+        "name": "PsychoDelic Dream",
+        "author": "BigCheese",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-shl0",
+        "name": "f1",
+        "author": "Lee Chiddention",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-siqr",
+        "name": "Kids Watch",
+        "author": "JPS",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-m471",
+        "name": "Back to the Future",
+        "author": "Henri V.",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-70vm",
+        "name": "Orologio",
+        "author": "El Duderino",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-jfby",
+        "name": "LuXurY",
+        "author": "Henri V.",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-1p5o",
+        "name": "Nixie",
+        "author": "Henri V.",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "celestial-animated-qvym",
+        "name": "* *.  * Celestial 2",
+        "author": "El Duderino",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-9pmt",
+        "name": "Greg Takacs Machine",
+        "author": "JPS",
+        "license": "CC0 1.0"
+      }
+    ],
+    "blue_meridian_shared": true
+  },
+  {
+    "file": "library-03-d5e61353.ocg",
+    "name": "Library 03",
+    "bytes": 3042866,
+    "max_decoded": 1357418,
+    "ram_required_after_framebuffers": 5968411,
+    "faces": [
+      {
+        "slug": "untitled-theme-2ni8",
+        "name": "RLX DAY-DATE",
+        "author": "JPS",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "my-first-theme-qs0y",
+        "name": "Trench",
+        "author": "Ben Lawrence",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-syxn",
+        "name": "ORBLEX (Cyclopped)",
+        "author": "JPS",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-663j",
+        "name": "W-orb",
+        "author": "Henri V.",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-qup4",
+        "name": "Le Roi Soleil",
+        "author": "JPS",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-6yuf",
+        "name": "FERRARI",
+        "author": "JPS",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-r7m6",
+        "name": "Orange glow",
+        "author": "Henri V.",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-32mz",
+        "name": "Orb_on_FIRE",
+        "author": "JPS",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-o0qj",
+        "name": "Hidden Art Deco",
+        "author": "El Duderino",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-shab",
+        "name": "Acoustic Guitar",
+        "author": "hotbrass",
+        "license": "CC0 1.0"
+      }
+    ],
+    "blue_meridian_shared": true
+  },
+  {
+    "file": "library-04-30a66998.ocg",
+    "name": "Library 04",
+    "bytes": 963184,
+    "max_decoded": 3068636,
+    "ram_required_after_framebuffers": 4994469,
+    "faces": [
+      {
+        "slug": "untitled-theme-vtm1",
+        "name": "Slotty",
+        "author": "JPS",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-vvtv",
+        "name": "00VII",
+        "author": "El Duderino",
+        "license": "CC0 1.0"
+      },
+      {
+        "slug": "untitled-theme-73u0",
+        "name": "Celestial * *.  *",
+        "author": "El Duderino",
+        "license": "CC0 1.0"
+      }
+    ],
+    "blue_meridian_shared": true
+  }
+]

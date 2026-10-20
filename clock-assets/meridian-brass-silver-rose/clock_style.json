@@ -1,0 +1,87 @@
+{
+  "bg": 13089437,
+  "plateFollow": 0,
+  "bgAnim": {
+    "frames": 0
+  },
+  "tickRate": 1,
+  "secondSweep": false,
+  "secondRailway": false,
+  "windOn": false,
+  "textOverHands": false,
+  "text1": {
+    "show": true,
+    "x": 233,
+    "y": 291,
+    "color": 2501419,
+    "opa": 255,
+    "glow": 0,
+    "glowColor": 0,
+    "fmt": "%A",
+    "upper": true,
+    "bgOpa": 0,
+    "curved": false,
+    "align": 1
+  },
+  "text2": {
+    "show": true,
+    "x": 233,
+    "y": 320,
+    "color": 2501419,
+    "opa": 255,
+    "glow": 0,
+    "glowColor": 0,
+    "fmt": "%m/%d/%y",
+    "upper": true,
+    "bgOpa": 0,
+    "curved": false,
+    "align": 1
+  },
+  "hands": {
+    "hour": {
+      "show": true,
+      "pivotX": 12,
+      "pivotY": 132,
+      "centerX": 233,
+      "centerY": 233,
+      "blend": 0
+    },
+    "minute": {
+      "show": true,
+      "pivotX": 9,
+      "pivotY": 206,
+      "centerX": 233,
+      "centerY": 233,
+      "blend": 0
+    },
+    "second": {
+      "show": true,
+      "pivotX": 7,
+      "pivotY": 228,
+      "centerX": 233,
+      "centerY": 233,
+      "blend": 0
+    },
+    "static1": {
+      "show": true,
+      "pivotX": 10,
+      "pivotY": 10,
+      "centerX": 233,
+      "centerY": 233,
+      "blend": 0
+    },
+    "static2": {
+      "show": false
+    },
+    "order": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "shadow": {
+      "on": false
+    }
+  }
+}

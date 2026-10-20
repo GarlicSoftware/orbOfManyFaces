@@ -1,0 +1,12 @@
+.pio/
+__pycache__/
+*.pyc
+releases/
+orb-backups/
+*.log
+firmware.bin
+bootloader.bin
+partitions.bin
+manifest.json
+tools/generated/
+previews/

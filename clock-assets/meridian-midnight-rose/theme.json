@@ -1,0 +1,33 @@
+{
+  "name": "Meridian Midnight Rose",
+  "author": "GarlicSoftware",
+  "assets": [
+    "clock_hand_hour.png",
+    "clock_hand_minute.png",
+    "clock_hand_second.png",
+    "clock_plate.png",
+    "clock_static1.png",
+    "font_clock1.bin",
+    "font_clock2.bin",
+    "font_menu_current.bin"
+  ],
+  "assetsHash": 1376893254,
+  "apps": {
+    "clock": true,
+    "flight": false,
+    "headlines": false,
+    "weather": false,
+    "surveillance": false,
+    "ticker": false
+  },
+  "names": {
+    "clock": "Clock",
+    "settings": "Settings"
+  },
+  "styles": [
+    "clock_style.json",
+    "settings_style.json",
+    "menu_style.json"
+  ],
+  "license": "MIT"
+}

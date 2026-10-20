@@ -1,0 +1,4 @@
+platformio==6.2.0
+Pillow>=11,<14
+pyserial==3.5
+esptool==4.8.6
