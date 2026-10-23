@@ -10,12 +10,12 @@ def main():
     assert len(credits)==42 and all(c['license'] in ('MIT','CC0 1.0') for c in credits)
     with tempfile.TemporaryDirectory(prefix='orb-public-release-') as temp:
         folder=Path(temp)/f'orbOfManyFaces-{version}';folder.mkdir()
-        for name in ('README.md','CHANGELOG.md','requirements-install.txt','NOTICE.md','LICENSE','requirements.txt','platformio.ini','partitions.csv','install.py','ARTWORK_CREDITS.json','face-credits.json','face-library.json'):
+        for name in ('README.md','ROADMAP.md','CHANGELOG.md','requirements-install.txt','NOTICE.md','LICENSE','requirements.txt','platformio.ini','partitions.csv','install.py','ARTWORK_CREDITS.json','face-credits.json','face-library.json'):
             shutil.copyfile(ROOT/name,folder/name)
         for directory in ('src','include','clock-assets','imported-faces','licenses','docs','sd-groups','tests'):
             shutil.copytree(ROOT/directory,folder/directory,ignore=shutil.ignore_patterns('__pycache__'))
         (folder/'tools').mkdir()
-        for name in ('__init__.py','device.py','upload_groups.py','build_sd_groups.py','font_bin.py','bake_assets.py','package_release.py','test_logic.py'):
+        for name in ('__init__.py','device.py','upload_groups.py','build_sd_groups.py','font_bin.py','bake_assets.py','package_release.py','test_logic.py','test_favorites.py','test_renderer.py'):
             shutil.copyfile(ROOT/'tools'/name,folder/'tools'/name)
         images=[]
         for name,address,limit in [('bootloader.bin',0,0x8000),('partitions.bin',0x8000,0x9000),('firmware.bin',0x10000,0x650000)]:

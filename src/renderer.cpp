@@ -3,6 +3,7 @@
 #include <esp_heap_caps.h>
 #include <math.h>
 #include <string.h>
+#include <string>
 #ifdef ARDUINO
 #include <miniz.h>
 #endif
@@ -24,6 +25,11 @@ uint8_t *decoded[10]={}; // plate, five layers, three shadows, overlay
 int decodedFace=-1;
 const Face *activeFaces=faces;
 int activeCount=FACE_COUNT;
+constexpr int STAR_X=217,STAR_Y=90,STAR_SIZE=32;
+uint16_t starBackground[STAR_SIZE*STAR_SIZE];
+uint8_t starOpacity=0;int starStyle=1;bool starBackgroundValid=false;
+std::string menuLabel;int menuSelection=-1;uint32_t menuSelectedAt=0;bool menuScroll=false;
+
 
 bool loadFace(int index) {
     if (index==decodedFace) return true;
@@ -47,6 +53,27 @@ bool loadFace(int index) {
     for (int i=0;i<10;++i) {free(decoded[i]);decoded[i]=next[i];}
     decodedFace=index;return true;
 }
+uint16_t blend(uint16_t dst,uint16_t src,unsigned alpha);
+bool inStar(float x,float y,float scale=1) {
+    static float px[10],py[10];static bool initialized=false;
+    if(!initialized){for(int i=0;i<10;++i){float a=(i*36-90)*float(M_PI)/180,r=i&1?5.0f:11.5f;px[i]=16+cosf(a)*r;py[i]=16+sinf(a)*r;}initialized=true;}
+    x=(x-16)/scale+16;y=(y-16)/scale+16;bool inside=false;
+    for(int i=0,j=9;i<10;j=i++)if((py[i]>y)!=(py[j]>y)&&x<(px[j]-px[i])*(y-py[i])/(py[j]-py[i])+px[i])inside=!inside;
+    return inside;
+}
+void drawFavoriteStar() {
+    if(!starOpacity)return;
+    static uint8_t masks[3][STAR_SIZE*STAR_SIZE];static bool initialized=false;
+    if(!initialized){
+        for(int y=0;y<STAR_SIZE;++y)for(int x=0;x<STAR_SIZE;++x){unsigned fill=0,outline=0;
+            for(int sy=0;sy<2;++sy)for(int sx=0;sx<2;++sx){float xx=x+.25f+sx*.5f,yy=y+.25f+sy*.5f;bool inside=inStar(xx,yy);fill+=inside;outline+=inside&&!inStar(xx,yy,.65f);}
+            masks[0][y*STAR_SIZE+x]=fill;masks[1][y*STAR_SIZE+x]=outline;masks[2][y*STAR_SIZE+x]=(abs(x-y)<2||abs(x+y-31)<2)&&x>6&&x<26?4:0;
+        }initialized=true;
+    }
+    int mask=starStyle==2?2:starStyle<0?1:0;
+    for(int y=0;y<STAR_SIZE;++y)for(int x=0;x<STAR_SIZE;++x){unsigned coverage=masks[mask][y*STAR_SIZE+x];if(coverage)frame[(STAR_Y+y)*W+STAR_X+x]=blend(frame[(STAR_Y+y)*W+STAR_X+x],starStyle==2?0xf800:starStyle<0?0x528a:0xe5ec,starOpacity*coverage/4);}
+
+}
 void IRAM_ATTR teRise() { ++teCount; }
 
 uint16_t blend(uint16_t dst, uint16_t src, unsigned alpha) {
@@ -58,7 +85,7 @@ uint16_t blend(uint16_t dst, uint16_t src, unsigned alpha) {
          | (((dst&31)*inverse+(src&31)*alpha+127)/255);
 }
 
-void drawText(const Font &font, const char *text, int centerX, int centerY, uint16_t color,unsigned opacity=255,int align=1) {
+void drawText(const Font &font, const char *text, int centerX, int centerY, uint16_t color,unsigned opacity=255,int align=1,int clipLeft=0,int clipRight=W) {
     int width=0;
     for (const char *c=text; *c; ++c)
         if (*c>=32 && *c<=126) width+=font.glyphs[*c-32].advance;
@@ -72,7 +99,7 @@ void drawText(const Font &font, const char *text, int centerX, int centerY, uint
             if (dy<0 || dy>=H) continue;
             for (int sx=0;sx<g.width;++sx) {
                 const int dx=x+g.left+sx;
-                if (dx<0 || dx>=W) continue;
+                if (dx<clipLeft || dx>=clipRight) continue;
                 const unsigned a=font.pixels[g.offset+sy*g.width+sx]*opacity/255;
                 if (a) frame[dy*W+dx]=blend(frame[dy*W+dx],color,a);
             }
@@ -293,6 +320,8 @@ void renderClock(int face,const struct tm &local,bool valid,bool force) {
     }
     if (f.textOverHands) drawBanners(f,local,valid);
     drawSprite(f.overlay,decoded[9],0);
+    for(int y=0;y<STAR_SIZE;++y)memcpy(starBackground+y*STAR_SIZE,frame+(STAR_Y+y)*W+STAR_X,STAR_SIZE*2);
+    starBackgroundValid=true;drawFavoriteStar();
     flush(force);lastUs=micros()-started;
 }
 
@@ -307,15 +336,47 @@ void rendererSetFaces(const Face *items,int count) {
 }
 bool rendererPrepare(int face){return face>=0&&face<activeCount&&loadFace(face);}
 void rendererMenu(const char *const *names,int count,int selected,const char *message) {
+    starBackgroundValid=false;
     for(int i=0;i<W*H;++i)frame[i]=0x0841;
     const Font &font=*faces[0].text[0].font;
     drawText(font,"CLOCK GROUPS",233,80,0xeed5);
+    if(selected!=menuSelection||menuLabel!=(count?names[selected]:"")){menuSelection=selected;menuLabel=count?names[selected]:"";menuSelectedAt=millis();}
+    menuScroll=false;
     int start=max(0,min(selected-2,count-5));
     for(int i=start;i<min(count,start+5);++i) {
         int y=150+(i-start)*35;
         if(i==selected)for(int yy=y-15;yy<y+17;++yy)for(int x=65;x<401;++x)frame[yy*W+x]=0x31a6;
-        char label[40];snprintf(label,sizeof(label),"%.32s",names[i]);drawText(font,label,233,y,i==selected?0xffff:0xad75);
+        int width=0;for(const char *c=names[i];*c;++c)if(*c>=32&&*c<=126)width+=font.glyphs[*c-32].advance;
+        const int left=72,right=394,room=right-left;int x=233,align=1;
+        if(width>room){
+            align=0;x=left;
+            if(i==selected){menuScroll=true;uint32_t age=millis()-menuSelectedAt;int distance=width-room;uint32_t travel=distance*35,period=travel*2+1800,t=age%period;int offset=t<900?0:t<900+travel?(t-900)/35:t<1800+travel?distance:distance-int((t-1800-travel)/35);x-=offset;}
+        }
+        drawText(font,names[i],x,y,i==selected?0xffff:0xad75,255,align,left,right);
     }
     drawText(font,message?message:"Turn to choose / press to open",233,360,0xeed5);
-    drawText(font,"Hold to return",233,390,0xad75);flush(true);
+    drawText(font,"Hold to return",233,390,0xad75);flush(false);
+}
+
+bool rendererMenuScrolling(){return menuScroll;}
+void rendererFavorite(uint8_t opacity,int style,bool update){
+    bool changed=opacity!=starOpacity||style!=starStyle;starOpacity=opacity;starStyle=style;
+    if(!update||!changed||!starBackgroundValid)return;
+    for(int y=0;y<STAR_SIZE;++y)memcpy(frame+(STAR_Y+y)*W+STAR_X,starBackground+y*STAR_SIZE,STAR_SIZE*2);
+    drawFavoriteStar();
+    // Only transform and transmit the small overlay's aligned rectangle. This
+    // keeps fading cheap even with a rotated display; the dial is not rerendered.
+    int left=STAR_X,top=STAR_Y,right=STAR_X+STAR_SIZE,bottom=STAR_Y+STAR_SIZE;
+    float rad=rotationDeg*float(M_PI)/180,cs=cosf(rad),sn=sinf(rad);
+    if(rotationDeg){float minX=W,minY=H,maxX=0,maxY=0;for(int y:{top,bottom})for(int x:{left,right}){float xx=(x-232.5f)*cs-(y-232.5f)*sn+232.5f,yy=(x-232.5f)*sn+(y-232.5f)*cs+232.5f;minX=min(minX,xx);maxX=max(maxX,xx);minY=min(minY,yy);maxY=max(maxY,yy);}left=max(0,int(floorf(minX))-2);top=max(0,int(floorf(minY))-2);right=min(W,int(ceilf(maxX))+2);bottom=min(H,int(ceilf(maxY))+2);}
+    left&=~1;top&=~1;right=min(W,(right+1)&~1);bottom=min(H,(bottom+1)&~1);
+    const uint16_t *pixels=rotationDeg?rotated:frame;
+    if(rotationDeg)for(int y=top;y<bottom;++y){
+        // Match the full-frame sampler's floating-point accumulation exactly.
+        float sx=-232.5f*cs+(y-232.5f)*sn+232.5f,sy=232.5f*sn+(y-232.5f)*cs+232.5f;
+        for(int x=0;x<right;++x,sx+=cs,sy-=sn)if(x>=left){int ix=lroundf(sx),iy=lroundf(sy);rotated[y*W+x]=ix>=0&&iy>=0&&ix<W&&iy<H?frame[iy*W+ix]:0;}
+    }
+    const uint32_t before=teCount,start=micros();while(teCount==before&&micros()-start<18000)delayMicroseconds(50);
+    int width=right-left;for(int y=top;y<bottom;y+=16){int height=min(16,bottom-y);for(int row=0;row<height;++row){memcpy(strip+row*width,pixels+(y+row)*W+left,width*2);memcpy(previous+(y+row)*W+left,pixels+(y+row)*W+left,width*2);}panel->draw16bitRGBBitmap(left,y,strip,width,height);pushed+=width*height;}
+    ++frames;
 }

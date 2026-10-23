@@ -5,13 +5,15 @@
 #include "face_groups.h"
 #include "group_format.h"
 #include "renderer.h"
+#include "favorites.h"
+#include "face_serialization.h"
 #include <algorithm>
 #include <mbedtls/sha256.h>
 
 namespace {
 SPIClass sdSpi(HSPI);
 bool mounted=false;
-struct Entry {String id,name;};
+struct Entry {String id,name,path;};
 std::vector<Entry> entries;
 std::unique_ptr<clockpack::Group> loaded;
 std::vector<Face> rotation;
@@ -47,16 +49,20 @@ void groupsScan() {
             uint8_t head[24];
             if(f.read(head,24)==24&&!memcmp(head,"ORBGRP01",8)) {
                 uint8_t len[2];if(f.read(len,2)!=2)continue;unsigned n=len[0]|unsigned(len[1])<<8;
-                char label[61]={};if(n&&n<=60&&f.read((uint8_t*)label,n)==n){bool safe=true;for(unsigned j=0;j<n;++j)if(label[j]<32||label[j]>126||label[j]=='"'||label[j]=='\\')safe=false;if(safe)entries.push_back({name,label});}
+                char label[61]={};if(n&&n<=60&&f.read((uint8_t*)label,n)==n){bool safe=true;for(unsigned j=0;j<n;++j)if(label[j]<32||label[j]>126||label[j]=='"'||label[j]=='\\')safe=false;if(safe)entries.push_back({name,label,String("/clock-groups/")+name});}
             }
         }
         f.close();
     }
     std::sort(entries.begin()+1,entries.end(),[](const Entry&a,const Entry&b){return a.id<b.id;});
+    for(int i=0;i<favoritesGroupCount();++i){
+        char id[32],file[32];snprintf(id,sizeof(id),"favorites/%d",i+1);snprintf(file,sizeof(file),"/favorites-%03d.ocg",i+1);
+        entries.push_back({id,favoritesGroupName(i),String(favoritesDirectory())+file});
+    }
     if(oldId.length()) {
         bool found=false;for(int i=1;i<int(entries.size());++i)if(entries[i].id==oldId){current=i;found=true;break;}
         // A removed card does not invalidate the group already cached in RAM.
-        if(!found){if(entries.size()>=64)entries.pop_back();entries.push_back(old);current=entries.size()-1;}
+        if(!found){entries.push_back(old);current=entries.size()-1;}
     }
 }
 int groupsCount(){return entries.size();}
@@ -66,11 +72,8 @@ int groupCurrent(){return current;}
 int groupFaceCount(){return current?rotation.size():FACE_COUNT;}
 const Face &groupFace(int i){return current?rotation[i]:faces[i];}
 const char *groupError(){return error.c_str();}
-bool groupSelect(int index) {
+bool loadGroupPath(const String &path,int index) {
     error="";if(upload)return fail("Upload in progress");
-    if(index<0||index>=groupsCount())return fail("Unknown group");
-    if(!index){builtin();return rendererPrepare(0);}
-    String path="/clock-groups/"+entries[index].id;
     // Release the old group first: two compressed groups need not coexist.
     // Any failure falls back to the firmware's built-in blue Meridian.
     builtin();
@@ -78,16 +81,18 @@ bool groupSelect(int index) {
     const size_t size=f.size();if(size<24||size>clockpack::MAX_PACK)return fail("Invalid group size");
     uint8_t header[24];if(f.read(header,24)!=24)return fail("SD read failed");
     clockpack::Reader h{header+20,header+24};uint32_t raw=h.u32();
-    if(raw>clockpack::MAX_RAW||size+size_t(raw)+700000+262144>ESP.getFreePsram())return fail("Group exceeds free RAM");
+    if(raw>clockpack::MAX_RAW||size+size_t(raw)+262144>ESP.getFreePsram())return fail("Group exceeds free RAM");
     pack=(uint8_t*)heap_caps_malloc(size,MALLOC_CAP_SPIRAM);
     if(!pack)return fail("Not enough group RAM");
     memcpy(pack,header,24);size_t offset=24;
     while(offset<size){size_t n=min(size-offset,size_t(16384));if(f.read(pack+offset,n)!=n){builtin();return fail("SD read failed");}offset+=n;delay(1);}f.close();
     try {loaded=clockpack::parse(pack,size);}catch(const std::exception &e){String why=e.what();builtin();error=why;return false;}
-    uint32_t largest=700000,second=700000;
+    uint32_t largest=path.startsWith("/clock-favorites/")?0:clockpack::decodedBytes(faces[0]),second=0;
     for(const auto &item:loaded->faces){uint32_t n=item.plate.rawSize+item.overlay.image.rawSize;for(auto &s:item.hands)n+=s.image.rawSize;for(auto &s:item.shadows)n+=s.image.rawSize;if(n>largest){second=largest;largest=n;}else if(n>second)second=n;}
     if(size_t(largest)+second+262144>ESP.getFreePsram()){builtin();return fail("Group decode RAM exceeded");}
-    rotation.reserve(loaded->faces.size()+1);rotation.push_back(faces[0]); // Blue Meridian is shared by every group.
+    rotation.reserve(loaded->faces.size()+1);
+    // Favorites contain only explicit bookmarks; ordinary libraries share blue Meridian.
+    if(!path.startsWith("/clock-favorites/"))rotation.push_back(faces[0]);
     for(const auto &item:loaded->faces)rotation.push_back(item);
     rendererSetFaces(rotation.data(),rotation.size());
     // Decode every face once to reject broken compressed images before committing.
@@ -183,3 +188,12 @@ void groupSdInfo(const char *name) {
     Serial.printf("!clock {\"ok\":true,\"file\":\"%s\",\"exists\":true,\"valid\":%s,\"bytes\":%lu,\"faces\":%u,\"sha256\":\"%s\"}\n",
         name,valid?"true":"false",(unsigned long)bytes,count,digest.c_str());
 }
+
+bool groupSelect(int index){
+    if(index<0||index>=groupsCount())return fail("Unknown group");
+    if(!index){builtin();return rendererPrepare(0);}
+    return loadGroupPath(entries[index].path,index);
+}
+bool groupsStorageReady(){return mount();}
+void groupsMaintenanceReset(){builtin();}
+bool groupsValidateFile(const char *path){bool ok=loadGroupPath(path,0);builtin();return ok;}

@@ -12,9 +12,11 @@
 #include "renderer.h"
 #include "tick_audio.h"
 #include "face_groups.h"
+#include "favorites.h"
+#include <vector>
 
 namespace {
-constexpr char VERSION[]="Meridian Clock 0.5.1";
+constexpr char VERSION[]="Meridian Clock 0.6.0-dev";
 constexpr uint8_t RTC=0x51,TOUCH=0x5A;
 Preferences clockPrefs;
 String tzRule;
@@ -48,13 +50,22 @@ uint32_t soundToggles=0;
 bool menuOpen=false,menuDirty=false;
 int menuChoice=0;
 String menuMessage;
-uint32_t menuActivity=0;
+uint32_t menuActivity=0,lastMenuFrame=0,starStarted=0,lastStarFrame=0;
+bool menuPrompt=false,starActive=false;int starStyle=1;
+void notifyFavorite(){favoritesFace(face);starActive=favoritesCurrent();starStarted=millis();starStyle=1;rendererFavorite(starActive?255:0,starStyle,false);}
+bool toggleFavorite(){bool ok=favoritesToggle();starActive=true;starStarted=millis();starStyle=ok?(favoritesCurrent()?1:-1):2;rendererFavorite(255,starStyle);return ok;}
+int menuCount(){return menuPrompt?2:groupsCount()+(favoritesDirty()?1:0);}
+
 void drawMenu() {
-    const char *names[64];for(int i=0;i<groupsCount();++i)names[i]=groupName(i);
-    rendererMenu(names,groupsCount(),menuChoice,menuMessage.length()?menuMessage.c_str():nullptr);menuDirty=false;
+    std::vector<const char*> names;
+    if(menuPrompt){names.push_back("Build Now");names.push_back("Later");}
+    else{for(int i=0;i<groupsCount();++i)names.push_back(groupName(i));if(favoritesDirty())names.push_back("Update Favorites");}
+    menuChoice=wrapFace(menuChoice,0,names.size());
+    rendererMenu(names.data(),names.size(),menuChoice,menuMessage.length()?menuMessage.c_str():menuPrompt?"Favorites have changed":nullptr);
+    menuDirty=false;lastMenuFrame=millis();
 }
 void openMenu() {
-    groupsScan();menuOpen=true;menuDirty=true;menuChoice=groupCurrent();menuMessage="";menuActivity=millis();swipe=Swipe();
+    groupsScan();menuOpen=true;menuDirty=true;menuPrompt=favoritesPrompt();menuChoice=menuPrompt?0:groupCurrent();menuMessage="";menuActivity=millis();swipe=Swipe();
 }
 void chooseGroup(int target) {
     rendererMenu(nullptr,0,0,"Loading group...");
@@ -62,9 +73,28 @@ void chooseGroup(int target) {
     // Failure is a safe fallback, not a half-loaded rotation.
     clockPrefs.putString("group",groupId(groupCurrent()));
     if(ok){menuOpen=false;menuMessage="";}else{menuOpen=true;menuMessage=groupError();menuChoice=0;menuDirty=true;}
-    menuActivity=millis();
+    notifyFavorite();menuActivity=millis();
 }
 
+void serviceClockAudio(){
+    const time_t now=time(nullptr);tm local={};localtime_r(&now,&local);
+    const bool hour=chimeGate.update(now,local.tm_min,local.tm_sec,now>1704067200,ticking);
+    const bool second=tickGate.update(now,now>1704067200,ticking);
+    if(hour)tickAudioChime();else if(second)tickAudioPlay();
+}
+void buildProgress(const char *message){serviceClockAudio();rendererMenu(nullptr,0,0,message);Serial.printf("[favorites] %s\n",message);}
+bool rebuildFavorites(){
+    String oldId=groupId(groupCurrent());int oldFace=face;
+    bool ok=favoritesBuild(buildProgress);String why=favoritesError();
+    groupsScan();int restore=0;for(int i=1;i<groupsCount();++i)if(oldId==groupId(i)){restore=i;break;}
+    if(!groupSelect(restore))groupSelect(0);face=wrapFace(oldFace,0,groupFaceCount());if(!rendererPrepare(face))face=0;
+    notifyFavorite();forceFrame=true;saveFace=true;lastFaceChange=millis();
+    menuPrompt=false;menuChoice=groupCurrent();menuOpen=!ok;menuMessage=why;menuDirty=!ok;menuActivity=millis();return ok;
+}
+void chooseMenu(){
+    if(menuPrompt){if(!menuChoice)rebuildFavorites();else if(favoritesLater()){menuPrompt=false;menuChoice=groupCurrent();menuMessage="";menuDirty=true;}else{menuMessage=favoritesError();menuDirty=true;}menuActivity=millis();}
+    else if(menuChoice==groupsCount())rebuildFavorites();else chooseGroup(menuChoice);
+}
 
 void setVolume(int value) {
     value=constrain(value,0,100);
@@ -124,7 +154,7 @@ void changeFace(int target) {
     if(!rendererPrepare(target)) return;
     prepareUs=micros()-started;
     face=target;forceFrame=true;saveFace=true;
-    lastFaceChange=millis();++faceChanges;
+    lastFaceChange=millis();++faceChanges;notifyFavorite();
 }
 
 void pollTouch() {
@@ -189,8 +219,13 @@ void handleCommand(char *line) {
     else if (!strcmp(cmd,"groups")) {
         Serial.printf("!clock {\"ok\":true,\"current\":%d,\"menu\":%s,\"groups\":[",groupCurrent(),menuOpen?"true":"false");
         for(int i=0;i<groupsCount();++i)Serial.printf("%s{\"index\":%d,\"id\":\"%s\",\"name\":\"%s\"}",i?",":"",i,groupId(i),groupName(i));
-        Serial.printf("],\"cached_bytes\":%lu,\"sd_pack_read_bytes\":%lu}\n",(unsigned long)groupCachedBytes(),(unsigned long)groupSdReadBytes());
+        Serial.printf("],\"cached_bytes\":%lu,\"sd_pack_read_bytes\":%lu,\"favorites_prompt\":%s,\"update_favorites\":%s,\"menu_choice\":%d}\n",(unsigned long)groupCachedBytes(),(unsigned long)groupSdReadBytes(),menuPrompt?"true":"false",favoritesDirty()?"true":"false",menuChoice);
     } else if (!strcmp(cmd,"menu")) {openMenu();Serial.println("!clock {\"ok\":true}");}
+    else if (!strncmp(cmd,"menu choose ",12)){
+        char *end=nullptr;long choice=strtol(cmd+12,&end,10);
+        if(!menuOpen||end==cmd+12||*end||choice<0||choice>=menuCount()){Serial.println("!clock {\"ok\":false,\"error\":\"invalid menu choice\"}");return;}
+        menuChoice=choice;chooseMenu();Serial.println("!clock {\"ok\":true}");
+    }
     else if (!strcmp(cmd,"menu cancel")) {menuOpen=false;forceFrame=true;Serial.println("!clock {\"ok\":true}");}
     else if (!strncmp(cmd,"group ",6)) {
         char *end=nullptr;long target=strtol(cmd+6,&end,10);
@@ -207,6 +242,10 @@ void handleCommand(char *line) {
     } else if (!strcmp(cmd,"sd finish")) {
         bool ok=groupUploadFinish();Serial.printf("!clock {\"ok\":%s,\"error\":\"%s\"}\n",ok?"true":"false",groupError());
     } else if (!strcmp(cmd,"sd abort")) {groupUploadAbort();Serial.println("!clock {\"ok\":true}");}
+    else if (!strcmp(cmd,"favorites status")) favoritesStatus();
+    else if (!strcmp(cmd,"favorites toggle")) {bool ok=toggleFavorite();Serial.printf("!clock {\"ok\":%s,\"favorite\":%s,\"error\":\"%s\"}\n",ok?"true":"false",favoritesCurrent()?"true":"false",favoritesError());}
+    else if (!strcmp(cmd,"favorites later")) {bool ok=favoritesLater();Serial.printf("!clock {\"ok\":%s,\"error\":\"%s\"}\n",ok?"true":"false",favoritesError());}
+    else if (!strcmp(cmd,"favorites build")) {bool ok=rebuildFavorites();Serial.printf("!clock {\"ok\":%s,\"error\":\"%s\"}\n",ok?"true":"false",favoritesError());}
     else if (!strcmp(cmd,"audio status")) tickAudioDiagnostics();
     else if (!strcmp(cmd,"chime test")) {
         bool ok=tickAudioChime();Serial.printf("!clock {\"ok\":%s,\"error\":\"%s\"}\n",ok?"true":"false",ok?"":"Chime muted or audio unavailable");
@@ -308,13 +347,14 @@ void setup() {
     WiFi.begin(); // existing saved network; returns without waiting for association
     sntp_set_time_sync_notification_cb([](struct timeval *){ntpEvent=true;});
     configTzTime(tzRule.c_str(),"pool.ntp.org","time.nist.gov");
-    groupsScan();
+    favoritesBegin();groupsScan();
     String savedGroup=clockPrefs.getString("group","");
     if(savedGroup.length())for(int i=1;i<groupsCount();++i)if(savedGroup==groupId(i)){
         int savedFace=clockPrefs.getUChar("face",0);
         if(groupSelect(i))face=wrapFace(savedFace,0,groupFaceCount());else face=0;
         forceFrame=true;break;
     }
+    notifyFavorite();
     Serial.printf("[clock] %s ready, first frame %lu ms, touch %s\n",VERSION,
                   (unsigned long)firstFrameMs,touchPresent ? "present":"absent");
 }
@@ -324,28 +364,30 @@ void loop() {
     groupUploadPoll();
     const int32_t position=detents;
     if (position!=consumedDetents) {
-        if(menuOpen){menuChoice=wrapFace(menuChoice,position-consumedDetents,groupsCount());menuDirty=true;menuMessage="";menuActivity=millis();}
+        if(menuOpen){menuChoice=wrapFace(menuChoice,position-consumedDetents,menuCount());menuDirty=true;menuMessage="";menuActivity=millis();}
         else setVolume(stepVolume(tickVolume,position-consumedDetents));
         consumedDetents=position;
     }
     const auto event=button.update(digitalRead(16)==LOW,millis());
     if(event==ClockButton::LONG_PRESS){if(menuOpen){menuOpen=false;forceFrame=true;}else openMenu();}
-    else if(event==ClockButton::SHORT_PRESS&&menuOpen)chooseGroup(menuChoice);
+    else if(event==ClockButton::SHORT_PRESS){if(menuOpen)chooseMenu();else toggleFavorite();}
     if(menuOpen&&millis()-menuActivity>30000){menuOpen=false;forceFrame=true;}
+    if(menuOpen&&rendererMenuScrolling()&&millis()-lastMenuFrame>=50)menuDirty=true;
     if(menuOpen&&menuDirty)drawMenu();
     pollTouch();
     const time_t now=time(nullptr);
     if (ntpEvent) {ntpEvent=false;synced=true;writeRtc(now);}
-    tm chimeLocal={};localtime_r(&now,&chimeLocal);
-    const bool hour=chimeGate.update(now,chimeLocal.tm_min,chimeLocal.tm_sec,now>1704067200,ticking);
-    const bool second=tickGate.update(now,now>1704067200,ticking);
-    if(hour)tickAudioChime();else if(second)tickAudioPlay();
+    serviceClockAudio();
     if (!menuOpen && (forceFrame || now!=lastDrawn)) {
         tm local={};localtime_r(&now,&local);
         const bool switched=forceFrame;
         renderClock(face,local,now>1704067200,switched);
         if (switched) {switchUs=prepareUs+rendererLastUs();prepareUs=0;}
         forceFrame=false;lastDrawn=now;
+    }
+    if(!menuOpen&&starActive&&millis()-lastStarFrame>=50){
+        uint32_t age=millis()-starStarted;uint8_t opacity=age<1500?255:age<2000?uint8_t((2000-age)*255/500):0;
+        rendererFavorite(opacity,starStyle);lastStarFrame=millis();if(!opacity)starActive=false;
     }
     // Write flash only once the user stops turning, never on every click.
     if (saveFace && millis()-lastFaceChange>=1500) {

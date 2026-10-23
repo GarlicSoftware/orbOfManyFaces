@@ -26,6 +26,7 @@ using std::min;using std::max;
 #define RISING 0
 inline uint32_t fakeUs=0;
 inline uint32_t micros(){return fakeUs+=100;}
+inline uint32_t millis(){return fakeUs/1000;}
 inline void delayMicroseconds(unsigned){}
 inline void pinMode(int,int){}
 inline int digitalPinToInterrupt(int pin){return pin;}
@@ -71,6 +72,7 @@ inline void *heap_caps_malloc(size_t bytes,int){return malloc(bytes);}
 '''
 test=r'''
 #define _USE_MATH_DEFINES
+#include "Arduino.h"
 #include <cassert>
 #include <cstring>
 #include <cstdio>
@@ -79,6 +81,8 @@ test=r'''
 #include "renderer.h"
 #include "assets.h"
 int main(){
+ setvbuf(stdout,nullptr,_IONBF,0);
+ _set_error_mode(_OUT_TO_STDERR);_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
  assert(rendererBegin(200,0));
  std::vector<uint16_t> incremental(466*466);
  unsigned frames=0;
@@ -110,6 +114,16 @@ int main(){
    }
    std::fclose(file);
  }
+ for(int angle:{0,90,37}){
+  std::printf("Testing star orientation %d\n",angle);
+  assert(rendererBegin(200,angle));tm local={};local.tm_year=126;local.tm_mon=9;local.tm_mday=22;local.tm_wday=4;local.tm_hour=10;local.tm_min=9;local.tm_sec=13;rendererFavorite(0,1,false);renderClock(0,local,true,true);
+  std::vector<uint16_t> clean(physicalPanel,physicalPanel+466*466);unsigned before=rendererPushedPixels();
+  for(int style:{1,-1,2}){for(int opacity:{255,220,170,120,70,20,0}){rendererFavorite(opacity,style);assert(!memcmp(physicalPanel,rendererCapture(),466*466*2));}assert(!memcmp(physicalPanel,clean.data(),466*466*2));}
+  assert(rendererPushedPixels()-before<60000); // tiny rectangles, not full dials
+ }
+ const char *labels[]={"The Favorites Have Formed a Committee and Asked for Even More Favorites"};
+ std::puts("Testing menu scrolling");rendererMenu(labels,1,0,nullptr);assert(rendererMenuScrolling());std::vector<uint16_t> initial(physicalPanel,physicalPanel+466*466);fakeUs+=2000000;rendererMenu(labels,1,0,nullptr);assert(memcmp(initial.data(),physicalPanel,466*466*2));assert(!memcmp(physicalPanel,rendererCapture(),466*466*2));
+ std::puts("PASS: favorite-star fade restores pixels exactly at 0/90/37 degrees; small aligned writes; long names scroll");
  std::printf("PASS: %u tick frames on all faces, all panel windows aligned, partial/full delivery identical across midnight; %u partial writes\n",frames,partialWrites);
 }
 '''
@@ -137,7 +151,7 @@ with tempfile.TemporaryDirectory(prefix='meridian-panel-test-') as temporary:
     assert broken.returncode!=0,'Pre-fix renderer unexpectedly passed panel alignment checks'
     print('Confirmed: original renderer fails the panel-alignment assertion.',flush=True)
     fixed=run_renderer(work,ROOT/'src/renderer.cpp','fixed')
-    assert fixed.returncode==0,fixed.stdout+fixed.stderr
+    assert fixed.returncode==0,str(fixed.returncode)+"\n"+fixed.stdout+fixed.stderr
     print(fixed.stdout,flush=True)
     output=ROOT/'previews';output.mkdir(exist_ok=True)
     sheet=Image.new('RGB',(5*260,2*290),'#20232a');draw=ImageDraw.Draw(sheet)

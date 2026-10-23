@@ -19,3 +19,7 @@ bool groupUploading();
 void groupUploadPoll();
 uint32_t groupSdReadBytes();
 uint32_t groupCachedBytes();
+
+bool groupsStorageReady();
+void groupsMaintenanceReset();
+bool groupsValidateFile(const char *path);

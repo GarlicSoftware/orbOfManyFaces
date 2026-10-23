@@ -36,9 +36,10 @@ class Clock:
                 self.serial.close();raise
 
     def command(self,cmd,timeout=20):
-        readonly=cmd in ('status','hello','groups','audio status','sd status') or cmd.startswith('sd info ')
+        readonly=cmd in ('status','hello','groups','audio status','sd status','favorites status') or cmd.startswith('sd info ')
         def matches(reply):
             if cmd in ('status','hello'):return 'fw' in reply
+            if cmd=='favorites status':return 'favorites' in reply
             if cmd=='sd status':return 'sd_protocol' in reply
             if cmd.startswith('sd info '):return reply.get('file')==cmd[8:]
             if cmd=='groups':return 'groups' in reply

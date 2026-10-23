@@ -34,6 +34,48 @@ a count of the hour. It replaces that second's tick. It does not ring on startup
 or replay hours after time synchronization. A short grace window covers group
 loading across the hour. Volume zero mutes the bell and ticks together.
 
+## Favorites (development branch)
+
+Short-press the knob while a clock is displayed to add/remove that face as a
+favorite. It does not navigate. A filled star confirms adding, an outlined star
+confirms removal, and a red cross means saving failed (for example, no writable
+SD card). On swiping to a favorite, its star appears briefly, then fades. Only
+that small overlay is animated; normal clock rendering remains once per second.
+
+Selections save immediately to independent, checksummed SD records and survive
+restart. They do not rebuild artwork automatically. With pending changes, opening
+the group menu offers **Build Now** or **Later**. Later retains the existing
+Favorites and adds **Update Favorites** to the normal menu. That choice is
+remembered; only additional changes cause another prompt.
+
+An approved rebuild copies the original compressed artwork/fonts on the Orb,
+splits by actual packed size, decoded-image RAM and font metadata, shows progress,
+and validates every replacement before committing the new catalog. Existing
+libraries and the previous Favorites remain intact if building fails. Missing
+source artwork causes an error rather than silently dropping a bookmark. Keep
+original libraries installed for later rebuilds. Favorites require a writable
+FAT32 SD card and load into RAM like ordinary groups; ticks and cached swipes
+perform no SD reads.
+
+**Favorites contain only explicitly selected faces. Blue Meridian is not added
+automatically.** Labels progress through Favorites, More Favorites, More More
+Favorites, Too Many Favorites, More Too Many Favorites, We Need to Talk, then
+increasingly questionable names. Rebuilds consolidate where possible and update
+the display labels. Internal group IDs do not depend on those names. Long selected
+labels scroll in the menu instead of being truncated.
+
+Favorites data lives separately in `/clock-favorites/`; do not manually edit its
+binary selection/catalog records. Two verified state banks and committed group
+generations protect against interrupted writes. The compact bookmark index retains
+source references for removed faces so they can be re-added from an old Favorites
+library; it currently holds up to 512 distinct face identities. No original `.ocg`
+library is modified. Future importer work is tracked in [ROADMAP.md](ROADMAP.md).
+
+USB maintenance commands include `favorites status`, `favorites toggle`,
+`favorites later`, `favorites build` and `menu choose N` (zero-based visible choice).
+These run the same paths as the knob. Rebuild commands may take a minute or more
+for a large collection; allow a longer serial timeout.
+
 ## Hardware and preparation
 
 Use the Waveshare **ESP32-S3-Touch-AMOLED-1.75**, with 466x466 CO5300 display,
