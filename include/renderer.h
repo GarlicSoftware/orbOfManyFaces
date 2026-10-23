@@ -11,7 +11,7 @@ uint32_t rendererPushedPixels();
 const uint16_t *rendererCapture();
 void rendererSetFaces(const struct Face *items,int count);
 bool rendererPrepare(int face);
-void rendererMenu(const char *const *names,int count,int selected,const char *message);
+void rendererMenu(const char *const *names,int count,int selected,const char *message,const char *heading="CLOCK GROUPS");
 
 void rendererFavorite(uint8_t opacity,int style,bool update=true);
 bool rendererMenuScrolling();

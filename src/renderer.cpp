@@ -345,11 +345,11 @@ bool rendererPrepare(int face){
     if(old>=0)loadFace(old);
     return false;
 }
-void rendererMenu(const char *const *names,int count,int selected,const char *message) {
+void rendererMenu(const char *const *names,int count,int selected,const char *message,const char *heading) {
     starBackgroundValid=false;
     for(int i=0;i<W*H;++i)frame[i]=0x0841;
     const Font &font=*faces[0].text[0].font;
-    drawText(font,"CLOCK GROUPS",233,80,0xeed5);
+    drawText(font,heading,233,80,0xeed5);
     if(selected!=menuSelection||menuLabel!=(count?names[selected]:"")){menuSelection=selected;menuLabel=count?names[selected]:"";menuSelectedAt=millis();}
     menuScroll=false;
     int start=max(0,min(selected-2,count-5));

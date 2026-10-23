@@ -34,6 +34,36 @@ a count of the hour. It replaces that second's tick. It does not ring on startup
 or replay hours after time synchronization. A short grace window covers group
 loading across the hour. Volume zero mutes the bell and ticks together.
 
+## Rotation timers (development branch)
+
+Hold the knob for one second, turn to **Settings** at the bottom of the group
+menu, and press. Choose **Face rotation**, **Face order**, **Group rotation** or
+**Group order**. Turn to the value and press to save immediately and return to
+Settings. **Back** returns to group selection; holding the knob closes any menu.
+
+Both timers start **Off**. Each supports 5, 15 or 30 minutes; 1, 2, 6, 12 or
+24 hours. Each has **Sequential** and **Shuffle** order. Face rotation stays in
+the selected library, including Favorites. Group rotation visits all installed
+groups, including built-ins and Favorites. Shuffle avoids repeats within its
+cycle and skips the face/group already showing; manual visits count in the cycle.
+Shuffle progress is session-only; interval and order settings survive restarts.
+
+Schedules align to local time: 15 minutes changes at :00/:15/:30/:45, two hours
+at midnight/02:00/04:00, and 24 hours at midnight. Enabling a timer waits for the
+next boundary. Manual swipes and group choices do not reset either schedule.
+When both are due together, group rotation wins and opens the new group's first
+face. A single available group or face stays put.
+
+Timers wait while menus, a knob press, a touch gesture or a USB upload are active.
+Missed changes collapse to one when the clock resumes, with no catch-up burst;
+long blocking operations and time corrections re-arm the next boundary. The
+repeated daylight-saving hour does not replay previous rotations. Face changes
+use the RAM cache without SD reads. Group changes preload their artwork from SD
+as manual selection does, and safely skip unreadable groups. The hourly bell
+and volume controls retain their existing behavior.
+
+See [rotation validation](docs/rotation-validation.md) for host and device checks.
+
 ## Favorites (development branch)
 
 Short-press the knob while a clock is displayed to add/remove that face as a

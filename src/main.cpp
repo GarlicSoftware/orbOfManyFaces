@@ -13,6 +13,8 @@
 #include "tick_audio.h"
 #include "face_groups.h"
 #include "favorites.h"
+#include "rotation_logic.h"
+#include <esp_system.h>
 #include <vector>
 
 namespace {
@@ -52,28 +54,70 @@ int menuChoice=0;
 String menuMessage;
 uint32_t menuActivity=0,lastMenuFrame=0,starStarted=0,lastStarFrame=0;
 bool menuPrompt=false,starActive=false;int starStyle=1;
+
+enum MenuView {GROUP_MENU,SETTINGS_MENU,FACE_INTERVAL,GROUP_INTERVAL,FACE_ORDER,GROUP_ORDER};
+MenuView menuView=GROUP_MENU;
+rotation::Settings rotationSettings;
+rotation::Boundary faceBoundary,groupBoundary;
+rotation::Shuffle faceBag,groupBag;
+int bagGroup=-1,bagGroups=-1,bagFaces=-1;
+uint32_t catalogFingerprint=0;
+void refreshRotationCatalog(){
+    uint32_t hash=2166136261u;
+    for(int i=0;i<groupsCount();++i){for(const char *p=groupId(i);*p;++p)hash=(hash^uint8_t(*p))*16777619u;hash=(hash^255u)*16777619u;}
+    if(hash!=catalogFingerprint){catalogFingerprint=hash;bagGroup=bagGroups=bagFaces=-1;}
+}
+uint32_t automaticFaces=0,automaticGroups=0;
+time_t lastRotationPoll=0;
+void resetRotation(){faceBoundary.reset();groupBoundary.reset();lastRotationPoll=0;}
+void invalidateRotationBags(){bagGroup=bagGroups=bagFaces=-1;}
+void syncRotationBags(){
+    if(rotationSettings.groupShuffle&&bagGroups!=groupsCount()){
+        groupBag.reset(groupsCount(),groupCurrent(),esp_random);bagGroups=groupsCount();
+    }
+    if(rotationSettings.faceShuffle&&(bagGroup!=groupCurrent()||bagFaces!=groupFaceCount())){
+        faceBag.reset(groupFaceCount(),face,esp_random);bagGroup=groupCurrent();bagFaces=groupFaceCount();
+    }
+}
+
 void notifyFavorite(){favoritesFace(face);starActive=favoritesCurrent();starStarted=millis();starStyle=1;rendererFavorite(starActive?255:0,starStyle,false);}
 bool toggleFavorite(){bool ok=favoritesToggle();starActive=true;starStarted=millis();starStyle=ok?(favoritesCurrent()?1:-1):2;rendererFavorite(255,starStyle);return ok;}
-int menuCount(){return menuPrompt?2:groupsCount()+(favoritesDirty()?1:0);}
+int menuCount(){
+    if(menuView==SETTINGS_MENU)return 5;
+    if(menuView==FACE_INTERVAL||menuView==GROUP_INTERVAL)return rotation::intervalCount;
+    if(menuView==FACE_ORDER||menuView==GROUP_ORDER)return 2;
+    return menuPrompt?2:groupsCount()+(favoritesDirty()?1:0)+1;
+}
 
 void drawMenu() {
-    std::vector<const char*> names;
-    if(menuPrompt){names.push_back("Build Now");names.push_back("Later");}
-    else{for(int i=0;i<groupsCount();++i)names.push_back(groupName(i));if(favoritesDirty())names.push_back("Update Favorites");}
+    std::vector<const char*> names;String rows[4];const char *title=nullptr;
+    if(menuView==SETTINGS_MENU){
+        rows[0]=String("Face rotation: ")+rotation::labels[rotationSettings.face];
+        rows[1]=String("Face order: ")+(rotationSettings.faceShuffle?"Shuffle":"Sequential");
+        rows[2]=String("Group rotation: ")+rotation::labels[rotationSettings.group];
+        rows[3]=String("Group order: ")+(rotationSettings.groupShuffle?"Shuffle":"Sequential");
+        for(auto &row:rows)names.push_back(row.c_str());names.push_back("Back");title="Settings";
+    }else if(menuView==FACE_INTERVAL||menuView==GROUP_INTERVAL){
+        for(auto label:rotation::labels)names.push_back(label);
+        title=menuView==FACE_INTERVAL?"Face rotation":"Group rotation";
+    }else if(menuView==FACE_ORDER||menuView==GROUP_ORDER){names.push_back("Sequential");names.push_back("Shuffle");title=menuView==FACE_ORDER?"Face order":"Group order";}
+    else if(menuPrompt){names.push_back("Build Now");names.push_back("Later");title="Favorites have changed";}
+    else{for(int i=0;i<groupsCount();++i)names.push_back(groupName(i));if(favoritesDirty())names.push_back("Update Favorites");names.push_back("Settings");}
     menuChoice=wrapFace(menuChoice,0,names.size());
-    rendererMenu(names.data(),names.size(),menuChoice,menuMessage.length()?menuMessage.c_str():menuPrompt?"Favorites have changed":nullptr);
+    rendererMenu(names.data(),names.size(),menuChoice,menuMessage.length()?menuMessage.c_str():title,menuView==GROUP_MENU?"CLOCK GROUPS":"SETTINGS");
     menuDirty=false;lastMenuFrame=millis();
 }
 void openMenu() {
-    groupsScan();menuOpen=true;menuDirty=true;menuPrompt=favoritesPrompt();menuChoice=menuPrompt?0:groupCurrent();menuMessage="";menuActivity=millis();swipe=Swipe();
+    groupsScan();refreshRotationCatalog();menuView=GROUP_MENU;menuOpen=true;menuDirty=true;menuPrompt=favoritesPrompt();menuChoice=menuPrompt?0:groupCurrent();menuMessage="";menuActivity=millis();swipe=Swipe();
 }
 void chooseGroup(int target) {
+    menuView=GROUP_MENU;
     rendererMenu(nullptr,0,0,"Loading group...");
     bool ok=groupSelect(target);face=0;forceFrame=true;saveFace=true;lastFaceChange=millis();
     // Failure is a safe fallback, not a half-loaded rotation.
     clockPrefs.putString("group",groupId(groupCurrent()));
     if(ok){menuOpen=false;menuMessage="";}else{menuOpen=true;menuMessage=groupError();menuChoice=0;menuDirty=true;}
-    notifyFavorite();menuActivity=millis();
+    notifyFavorite();groupBag.visit(groupCurrent());bagGroup=-1;menuActivity=millis();
 }
 
 void serviceClockAudio(){
@@ -89,11 +133,27 @@ bool rebuildFavorites(){
     groupsScan();int restore=0;for(int i=1;i<groupsCount();++i)if(oldId==groupId(i)){restore=i;break;}
     if(!groupSelect(restore))groupSelect(0);face=wrapFace(oldFace,0,groupFaceCount());if(!rendererPrepare(face))face=0;
     notifyFavorite();forceFrame=true;saveFace=true;lastFaceChange=millis();
-    menuPrompt=false;menuChoice=groupCurrent();menuOpen=true;menuMessage=why;menuDirty=true;menuActivity=millis();return ok;
+    invalidateRotationBags();menuView=GROUP_MENU;menuPrompt=false;menuChoice=groupCurrent();menuOpen=true;menuMessage=why;menuDirty=true;menuActivity=millis();return ok;
 }
 void chooseMenu(){
-    if(menuPrompt){if(!menuChoice)rebuildFavorites();else if(favoritesLater()){menuPrompt=false;menuChoice=groupCurrent();menuMessage="";menuDirty=true;}else{menuMessage=favoritesError();menuDirty=true;}menuActivity=millis();}
-    else if(menuChoice==groupsCount())rebuildFavorites();else chooseGroup(menuChoice);
+    if(menuView==SETTINGS_MENU){
+        if(menuChoice==4){menuView=GROUP_MENU;menuChoice=groupCurrent();}
+        else{const int row=menuChoice;menuView=row==0?FACE_INTERVAL:row==1?FACE_ORDER:row==2?GROUP_INTERVAL:GROUP_ORDER;
+            menuChoice=row==0?rotationSettings.face:row==1?rotationSettings.faceShuffle:row==2?rotationSettings.group:rotationSettings.groupShuffle;}
+    }else if(menuView!=GROUP_MENU){
+        rotation::Settings next=rotationSettings;
+        const int row=menuView==FACE_INTERVAL?0:menuView==FACE_ORDER?1:menuView==GROUP_INTERVAL?2:3;
+        if(row==0)next.face=menuChoice;else if(row==1)next.faceShuffle=menuChoice;else if(row==2)next.group=menuChoice;else next.groupShuffle=menuChoice;
+        if(next.packed()!=rotationSettings.packed()&&clockPrefs.putUInt("rotation",next.packed())!=sizeof(uint32_t)){
+            menuMessage="Could not save setting";menuDirty=true;menuActivity=millis();return;
+        }
+        if(next.packed()!=rotationSettings.packed()){rotationSettings=next;resetRotation();invalidateRotationBags();}
+        menuView=SETTINGS_MENU;menuChoice=row;
+    }else if(menuPrompt){if(!menuChoice){rebuildFavorites();return;}else if(favoritesLater()){menuPrompt=false;menuChoice=groupCurrent();}else{menuMessage=favoritesError();menuDirty=true;menuActivity=millis();return;}}
+    else if(favoritesDirty()&&menuChoice==groupsCount()){rebuildFavorites();return;}
+    else if(menuChoice==menuCount()-1){menuView=SETTINGS_MENU;menuChoice=0;}
+    else{chooseGroup(menuChoice);return;}
+    menuMessage="";menuDirty=true;menuActivity=millis();
 }
 
 void setVolume(int value) {
@@ -154,7 +214,47 @@ void changeFace(int target) {
     if(!rendererPrepare(target)) return;
     prepareUs=micros()-started;
     face=target;forceFrame=true;saveFace=true;
-    lastFaceChange=millis();++faceChanges;notifyFavorite();
+    lastFaceChange=millis();++faceChanges;faceBag.visit(face);notifyFavorite();
+}
+
+void serviceRotation(time_t now){
+    if(now==lastRotationPoll)return;
+    lastRotationPoll=now;
+    if(!rotationSettings.face&&!rotationSettings.group)return;
+    tm local={};localtime_r(&now,&local);
+    const int64_t wall=utcEpoch(local.tm_year+1900,local.tm_mon+1,local.tm_mday,local.tm_hour,local.tm_min,local.tm_sec);
+    const bool blocked=menuOpen||groupUploading()||touchDown||button.stable;
+    const bool groupDue=groupBoundary.update(now,wall,rotation::intervals[rotationSettings.group],now>1704067200,blocked);
+    const bool faceDue=faceBoundary.update(now,wall,rotation::intervals[rotationSettings.face],now>1704067200,blocked);
+    syncRotationBags();
+    if(groupDue&&groupsCount()>1){
+        const int original=groupCurrent();int candidate=original;
+        std::vector<bool> attempted(groupsCount(),false);attempted[original]=true;
+        // Try each candidate at most once. A failed SD load safely falls back to
+        // built-ins; keep trying the next library rather than opening a menu.
+        for(int attempt=0;attempt<groupsCount()-1;++attempt){
+            candidate=rotationSettings.groupShuffle?groupBag.next(candidate,esp_random):wrapFace(candidate,1,groupsCount());
+            if(attempted[candidate]){for(int i=0;i<groupsCount();++i)if(!attempted[i]){candidate=i;break;}}
+            attempted[candidate]=true;groupBag.visit(candidate);
+            serviceClockAudio();
+            const bool loaded=groupSelect(candidate);serviceClockAudio();
+            if(loaded){
+                face=0;forceFrame=true;saveFace=true;lastFaceChange=millis();notifyFavorite();
+                bagGroup=-1;syncRotationBags();++automaticGroups;return;
+            }
+        }
+        face=0;forceFrame=true;saveFace=true;lastFaceChange=millis();notifyFavorite();bagGroup=-1;
+        return;
+    }
+    if(faceDue&&groupFaceCount()>1){
+        const int previous=face;
+        changeFace(rotationSettings.faceShuffle?faceBag.next(face,esp_random):wrapFace(face,1,groupFaceCount()));
+        if(face!=previous)++automaticFaces;
+    }
+}
+void rotationStatus(){
+    Serial.printf("!clock {\"ok\":true,\"rotation\":true,\"face_interval\":%u,\"face_shuffle\":%s,\"group_interval\":%u,\"group_shuffle\":%s,\"automatic_faces\":%lu,\"automatic_groups\":%lu,\"menu_view\":%d,\"menu_choice\":%d}\n",
+        rotationSettings.face,rotationSettings.faceShuffle?"true":"false",rotationSettings.group,rotationSettings.groupShuffle?"true":"false",(unsigned long)automaticFaces,(unsigned long)automaticGroups,int(menuView),menuChoice);
 }
 
 void pollTouch() {
@@ -240,8 +340,16 @@ void handleCommand(char *line) {
         unsigned long offset=0,bytes=0;bool ok=sscanf(cmd+9,"%lu %lu",&offset,&bytes)==2&&groupUploadChunk(offset,bytes);
         Serial.printf("!clock {\"ok\":%s,\"offset\":%lu,\"error\":\"%s\"}\n",ok?"true":"false",offset,groupError());
     } else if (!strcmp(cmd,"sd finish")) {
-        bool ok=groupUploadFinish();Serial.printf("!clock {\"ok\":%s,\"error\":\"%s\"}\n",ok?"true":"false",groupError());
+        bool ok=groupUploadFinish();if(ok)refreshRotationCatalog();Serial.printf("!clock {\"ok\":%s,\"error\":\"%s\"}\n",ok?"true":"false",groupError());
     } else if (!strcmp(cmd,"sd abort")) {groupUploadAbort();Serial.println("!clock {\"ok\":true}");}
+    else if (!strcmp(cmd,"rotation status")) rotationStatus();
+    else if (!strncmp(cmd,"rotation set ",13)) {
+        int fi,fm,gi,gm;char extra;
+        if(sscanf(cmd+13,"%d %d %d %d %c",&fi,&fm,&gi,&gm,&extra)!=4||fi<0||fi>=rotation::intervalCount||gi<0||gi>=rotation::intervalCount||fm<0||fm>1||gm<0||gm>1){Serial.println("!clock {\"ok\":false,\"error\":\"invalid rotation settings\"}");return;}
+        rotation::Settings next;next.face=fi;next.faceShuffle=fm;next.group=gi;next.groupShuffle=gm;
+        if(next.packed()!=rotationSettings.packed()&&clockPrefs.putUInt("rotation",next.packed())!=sizeof(uint32_t)){Serial.println("!clock {\"ok\":false,\"error\":\"settings write failed\"}");return;}
+        rotationSettings=next;resetRotation();invalidateRotationBags();rotationStatus();
+    }
     else if (!strcmp(cmd,"favorites status")) favoritesStatus();
     else if (!strcmp(cmd,"favorites toggle")) {bool ok=toggleFavorite();Serial.printf("!clock {\"ok\":%s,\"favorite\":%s,\"error\":\"%s\"}\n",ok?"true":"false",favoritesCurrent()?"true":"false",favoritesError());}
     else if (!strcmp(cmd,"favorites later")) {bool ok=favoritesLater();Serial.printf("!clock {\"ok\":%s,\"error\":\"%s\"}\n",ok?"true":"false",favoritesError());}
@@ -284,7 +392,7 @@ void handleCommand(char *line) {
         }
         tzRule=value;clockPrefs.putString("tz",tzRule);
         configTzTime(tzRule.c_str(),"pool.ntp.org","time.nist.gov");
-        forceFrame=true;Serial.println("!clock {\"ok\":true}");
+        resetRotation();forceFrame=true;Serial.println("!clock {\"ok\":true}");
     } else if (!strcmp(cmd,"reboot")) {
         Serial.println("!clock {\"ok\":true}");Serial.flush();ESP.restart();
     } else Serial.println("!clock {\"ok\":false,\"error\":\"unknown command\"}");
@@ -314,6 +422,7 @@ void setup() {
     rotationDeg=previous.isKey("rotDeg") ? previous.getInt("rotDeg",0) : previous.getInt("rot",0)*90;
     previous.end();
     clockPrefs.begin("orb-clock",false);face=clockPrefs.getUChar("face",1)%FACE_COUNT;
+    rotationSettings=rotation::Settings::unpack(clockPrefs.getUInt("rotation",0));
     tickVolume=constrain(clockPrefs.getInt("tickVol",35),0,100);
     if (clockPrefs.getUChar("controls",0)<2) {
         if (!clockPrefs.getBool("tickOn",true)) tickVolume=0;
@@ -347,7 +456,7 @@ void setup() {
     WiFi.begin(); // existing saved network; returns without waiting for association
     sntp_set_time_sync_notification_cb([](struct timeval *){ntpEvent=true;});
     configTzTime(tzRule.c_str(),"pool.ntp.org","time.nist.gov");
-    favoritesBegin();groupsScan();
+    favoritesBegin();groupsScan();refreshRotationCatalog();
     String savedGroup=clockPrefs.getString("group","");
     if(savedGroup.length())for(int i=1;i<groupsCount();++i)if(savedGroup==groupId(i)){
         int savedFace=clockPrefs.getUChar("face",0);
@@ -376,8 +485,9 @@ void loop() {
     if(menuOpen&&menuDirty)drawMenu();
     pollTouch();
     const time_t now=time(nullptr);
-    if (ntpEvent) {ntpEvent=false;synced=true;writeRtc(now);}
+    if (ntpEvent) {ntpEvent=false;synced=true;writeRtc(now);faceBoundary.synchronize();groupBoundary.synchronize();lastRotationPoll=0;}
     serviceClockAudio();
+    serviceRotation(now);
     if (!menuOpen && (forceFrame || now!=lastDrawn)) {
         tm local={};localtime_r(&now,&local);
         const bool switched=forceFrame;
