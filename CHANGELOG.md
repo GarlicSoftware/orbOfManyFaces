@@ -1,6 +1,8 @@
 # Unreleased - Favorites development
 
 - Favorites builds return to the group menu; the knob hold now takes one second.
+- Reverse knob volume adjustment while preserving group-menu navigation.
+- Add configurable automatic face rotation to the roadmap (not yet implemented).
 
 - Short knob press saves/removes a favorite without navigating; brief star feedback.
 - Persistent selections, revision-scoped Build Now/Later and Update Favorites.

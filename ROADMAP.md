@@ -47,5 +47,34 @@ faces must participate in Favorites. End users need no Python installation, term
 commands, programming or firmware flashing. Personal importing is separate from
 which artwork may be redistributed in the official release.
 
+## 3. Automatic face rotation (planned)
+
+Automatically advance only within the currently selected group, including
+Favorites. Never change groups automatically. Continue within a new group when
+the user selects it manually. Default to Off so existing behavior is preserved.
+
+Offer intervals of Off, 5 minutes, 15 minutes, 30 minutes, 1 hour, 2 hours,
+6 hours, 12 hours and 24 hours. Align changes to local clock boundaries: for
+example, 15 minutes means :00, :15, :30 and :45; multi-hour periods align from
+local midnight. Provide Sequential mode, wrapping through the group's existing
+order, and Random mode, preferably using a shuffle without repeats until all
+faces have been displayed. Handle empty and single-face groups safely.
+
+Provide simple interval and mode controls in the Orb interface and persist both
+across restarts. Manual swipes continue working without disabling rotation or
+resetting its boundary schedule. Reuse existing face switching and the selected
+group's RAM cache; automatic changes must not add SD reads, unnecessary redraws,
+recurring allocations or significant overhead.
+
+Handle startup, time synchronization, clock adjustments and daylight-saving
+changes without immediate catch-up bursts or repeated boundary triggers. Do not
+interrupt the group menu, Favorites operations or hourly chime. Define safe
+boundary handling while menus/builds are active so missed intervals never cause
+rapid rotations when normal clock display resumes.
+
+This is a separate, comparatively small enhancement alongside Favorites and the
+importer; adding it to this roadmap does not enable it in current firmware.
+
 These enhancements are separate from the released v0.5.1 installer. Implement and
-validate Favorites first.
+validate Favorites first, with the importer next and automatic rotation tracked
+independently.

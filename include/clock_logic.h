@@ -7,7 +7,7 @@ inline int wrapFace(int current, int delta,int count=2) {
 }
 
 inline int stepVolume(int current,int32_t detents) {
-    const int64_t next=int64_t(current)+int64_t(detents)*5;
+    const int64_t next=int64_t(current)-int64_t(detents)*5;
     return next<0 ? 0 : next>100 ? 100 : int(next);
 }
 

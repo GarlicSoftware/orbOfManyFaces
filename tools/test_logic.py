@@ -24,10 +24,10 @@ int main() {
     assert(wrapFace(0,-100)==0 && wrapFace(1,100)==1);
     assert(wrapFace(9,1,10)==0 && wrapFace(0,-1,10)==9);
     assert(wrapFace(1,23,10)==4 && wrapFace(1,-23,10)==8);
-    assert(stepVolume(60,1)==65 && stepVolume(60,-1)==55);
-    assert(stepVolume(5,-1)==0 && stepVolume(0,1)==5);
-    assert(stepVolume(0,-1)==0 && stepVolume(100,1)==100);
-    assert(stepVolume(35,-1000000)==0 && stepVolume(35,1000000)==100);
+    assert(stepVolume(60,1)==55 && stepVolume(60,-1)==65);
+    assert(stepVolume(5,1)==0 && stepVolume(0,-1)==5);
+    assert(stepVolume(0,1)==0 && stepVolume(100,-1)==100);
+    assert(stepVolume(35,1000000)==0 && stepVolume(35,-1000000)==100);
     Encoder e;e.previous=3;
     for(int i=0;i<100;++i) {e.edge(1);e.edge(3);}
     assert(e.detents==0);
