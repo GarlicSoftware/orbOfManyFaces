@@ -41,9 +41,14 @@ def matches(info, pack):
             info.get('bytes') == pack['bytes'] and info.get('sha256') == pack['sha256'])
 
 
-def upload(clock, name, data, digest):
+def upload(clock, name, data, digest, report=print):
     clock.command(f'sd begin {name} {len(data)} {digest}')
+    reported = -1
     for offset in range(0, len(data), 1024):
+        progress = offset * 4 // len(data)
+        if progress > reported:
+            report(f'{name}: {progress * 25}%')
+            reported = progress
         chunk = data[offset:offset + 1024]
         for attempt in range(4):
             clock.serial.write(f'\n?clock sd chunk {offset} {len(chunk)}\n'.encode() + chunk)
@@ -87,7 +92,7 @@ def install_packs(port, packs, root=ROOT, report=print, connector=connect):
                     raise RuntimeError('Filename already exists with different or invalid contents; left untouched')
                 else:
                     report('Uploading: ' + name)
-                    upload(clock, name, data, pack['sha256'])
+                    upload(clock, name, data, pack['sha256'], report)
                     if not matches(clock.command('sd info ' + name, timeout=15), pack):
                         raise RuntimeError('Stored pack failed SHA256 verification')
                     outcome['status'] = 'installed'
@@ -100,8 +105,8 @@ def install_packs(port, packs, root=ROOT, report=print, connector=connect):
                     clock.command('sd abort', timeout=2)
                 except (OSError, RuntimeError, TimeoutError):
                     break
-    except (OSError, ValueError, RuntimeError, TimeoutError) as error:
-        report('Optional SD libraries unavailable: ' + str(error))
+    except (OSError, ValueError, RuntimeError, TimeoutError, KeyboardInterrupt) as error:
+        report('Optional SD libraries unavailable: ' + (str(error) or 'Interrupted by user'))
     finally:
         if clock is not None:
             clock.serial.close()

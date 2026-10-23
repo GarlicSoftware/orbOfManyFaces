@@ -126,6 +126,22 @@ class Fixture(unittest.TestCase):
         self.assertEqual(result[0]['status'], 'failed')
         self.assertTrue(any('30/42' in m for m in self.messages))
 
+    def test_full_sd_reports_retry_and_keeps_existing_files(self):
+        clock = FakeClock({'existing.ocg': b'keep'})
+        with patch.object(ug, 'upload', side_effect=RuntimeError('SD card full')):
+            results = self.run_upload(clock)
+        self.assertTrue(all(r['status'] == 'failed' for r in results))
+        self.assertEqual(clock.files, {'existing.ocg': b'keep'})
+        self.assertTrue(any('--sd-only' in m for m in self.messages))
+
+    def test_ctrl_c_during_upload_closes_and_reports_partial_total(self):
+        clock = FakeClock()
+        with patch.object(ug, 'upload', side_effect=KeyboardInterrupt):
+            results = self.run_upload(clock)
+        self.assertEqual(results[0]['status'], 'failed')
+        self.assertTrue(clock.closed)
+        self.assertTrue(any('8/42' in m for m in self.messages))
+
     def test_missing_sd(self):
         clock = FakeClock(available=False)
         self.assertEqual(self.run_upload(clock), [])

@@ -107,5 +107,5 @@ def main():
 
 if __name__=='__main__':
     try:main()
-    except (ValueError,RuntimeError,subprocess.CalledProcessError) as error:
+    except (OSError,ValueError,RuntimeError,subprocess.CalledProcessError) as error:
         sys.exit(str(error))

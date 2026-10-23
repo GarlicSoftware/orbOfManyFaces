@@ -4,7 +4,7 @@ A lightweight clock-only firmware for the Waveshare **ESP32-S3-Touch-AMOLED-1.75
 Orb: swipe through clocks, turn the knob for volume, and hear a bell on the hour.
 
 **[Download the installer ZIP from Releases](https://github.com/GarlicSoftware/orbOfManyFaces/releases/latest).**
-Use the ZIP attached under **Assets**. GitHub's **Code â†’ Download ZIP** downloads
+Use the ZIP attached under **Assets**. GitHub's **Code > Download ZIP** downloads
 source code and does not include the compiled installer images.
 
 ![Meridian Midnight](docs/meridian-midnight.png)
@@ -15,7 +15,7 @@ source code and does not include the compiled installer images.
 |---|---|
 | Swipe horizontally | Next/previous face in the selected group |
 | Turn the knob | Tick and hourly-bell volume; zero mutes both |
-| Hold the knob about 1Â½ seconds | Open the group menu |
+| Hold the knob about 1.5 seconds | Open the group menu |
 | Turn in the menu, then press | Choose a group |
 | Hold again, or wait 30 seconds | Close the menu |
 
@@ -36,7 +36,7 @@ loading across the hour. Volume zero mutes the bell and ticks together.
 
 ## Hardware and preparation
 
-Use the Waveshare **ESP32-S3-Touch-AMOLED-1.75**, with 466Ã—466 CO5300 display,
+Use the Waveshare **ESP32-S3-Touch-AMOLED-1.75**, with 466x466 CO5300 display,
 16 MB flash, 8 MB PSRAM, CST9217 touch and ES8311 audio. Similar round displays
 and enclosures can contain different boards and require a firmware port.
 
@@ -48,7 +48,7 @@ is stored, its fallback is US Eastern; a USB override is available, for example
 
 ## Install the Release ZIP
 
-1. Install **Python 3.12** (recommended). The installer is tested on Python 3.10–3.12;
+1. Install **Python 3.12** (recommended). The installer is tested on Python 3.10-3.12;
    newer Python versions are not qualified. If dependencies fail on a newer version,
    use Python 3.12. On Windows, enable Python's PATH option or use `py -3.12` instead
    of `python` in the commands below.
@@ -81,7 +81,7 @@ open the Orb or remove its card. Interrupted uploads use temporary `.part` files
 retrying restarts only incomplete packs. Transfers are read back and checked
 before becoming visible in the menu. Your current face/library is retained.
 
-Hold the knob about **1½ seconds**, turn to a library, then press once to load it.
+Hold the knob about **1.5 seconds**, turn to a library, then press once to load it.
 Swipe horizontally to change faces within it. Turn the knob outside the menu
 for volume. Blue Meridian is included in every library.
 
@@ -97,6 +97,7 @@ macOS commonly uses `/dev/cu.usbmodem...`. If necessary, hold BOOT, tap RESET,
 release BOOT, and try again.
 
 The installer saves a complete **recipient-device 16 MB backup** before writing.
+This can take several minutes; keep the USB cable connected until it finishes.
 It checks the backup size, then writes the supplied bootloader, partition table
 and app at their explicit addresses. It does not whole-chip erase or overwrite
 NVS/settings or themeart. SD uploads write only the bundled filenames under
