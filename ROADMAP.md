@@ -75,6 +75,27 @@ rapid rotations when normal clock display resumes.
 This is a separate, comparatively small enhancement alongside Favorites and the
 importer; adding it to this roadmap does not enable it in current firmware.
 
+## 4. Automatic group rotation (planned)
+
+Allow users to switch clock groups automatically on a configurable timer,
+including Favorites groups. Keep this optional and disabled by default, with
+settings independent of face rotation. Face rotation alone must continue to stay
+within the selected group; only enabling group rotation permits timed changes
+between groups.
+
+Provide simple on-device controls for the group interval and participating
+libraries, and remember those settings across restarts. Coordinate group and
+face timers so a shared boundary produces one predictable transition rather
+than two rapid changes. Manual group selection must remain available. Handle
+restarts and time adjustments without catch-up bursts, and defer transitions
+while menus, Favorites builds or USB transfers are active.
+
+Reuse normal group loading and RAM caching. A group change may read the SD card
+to preload its artwork; subsequent ticks and face changes remain cached. Skip
+missing or unavailable libraries safely, preserve Favorites and unrelated card
+contents, and avoid interfering with the hourly chime. Final interval choices
+and group ordering controls can be settled when implementing this feature.
+
 These enhancements are separate from the released v0.5.1 installer. Implement and
 validate Favorites first, with the importer next and automatic rotation tracked
 independently.
