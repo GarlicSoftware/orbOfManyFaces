@@ -11,8 +11,9 @@ inline int stepVolume(int current,int32_t detents) {
     return next<0 ? 0 : next>100 ? 100 : int(next);
 }
 
-// A long hold never also performs the short-press face switch on release.
+// A long hold never also performs the short-press favorite toggle on release.
 struct ClockButton {
+    static constexpr uint32_t HOLD_MS=1000;
     enum Event {NONE,SHORT_PRESS,LONG_PRESS};
     bool observed=false,stable=false,longFired=false;
     uint32_t changed=0,pressedAt=0;
@@ -23,11 +24,11 @@ struct ClockButton {
             if (stable) {pressedAt=now;longFired=false;}
             else if (!longFired) {
                 // Release can arrive between loop samples of the hold deadline.
-                if (now-pressedAt>=1500) {longFired=true;return LONG_PRESS;}
+                if (now-pressedAt>=HOLD_MS) {longFired=true;return LONG_PRESS;}
                 return SHORT_PRESS;
             }
         }
-        if (stable && !longFired && now-pressedAt>=1500) {
+        if (stable && !longFired && now-pressedAt>=HOLD_MS) {
             longFired=true;return LONG_PRESS;
         }
         return NONE;

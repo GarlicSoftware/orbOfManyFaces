@@ -89,7 +89,7 @@ bool rebuildFavorites(){
     groupsScan();int restore=0;for(int i=1;i<groupsCount();++i)if(oldId==groupId(i)){restore=i;break;}
     if(!groupSelect(restore))groupSelect(0);face=wrapFace(oldFace,0,groupFaceCount());if(!rendererPrepare(face))face=0;
     notifyFavorite();forceFrame=true;saveFace=true;lastFaceChange=millis();
-    menuPrompt=false;menuChoice=groupCurrent();menuOpen=!ok;menuMessage=why;menuDirty=!ok;menuActivity=millis();return ok;
+    menuPrompt=false;menuChoice=groupCurrent();menuOpen=true;menuMessage=why;menuDirty=true;menuActivity=millis();return ok;
 }
 void chooseMenu(){
     if(menuPrompt){if(!menuChoice)rebuildFavorites();else if(favoritesLater()){menuPrompt=false;menuChoice=groupCurrent();menuMessage="";menuDirty=true;}else{menuMessage=favoritesError();menuDirty=true;}menuActivity=millis();}

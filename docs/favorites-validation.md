@@ -39,6 +39,12 @@ operations and scheduling delays.
 
 ## Automated checks
 
+Follow-up menu adjustment: rebuilt the owner's six saved favorites on the Orb
+and verified completion returns to the normal group menu without another hold.
+Selections, current clock, volume and timezone were preserved. Both firmware
+builds passed; button tests verify the one-second threshold, one-shot hold and
+release behavior.
+
 - Canonical serializer round-tripped all 42 public faces through the actual C++
   .ocg parser without changing their canonical representation or memory sizes.
 - Partitioning exercised compressed limits, decoded-image peaks, font metadata,

@@ -15,7 +15,7 @@ source code and does not include the compiled installer images.
 |---|---|
 | Swipe horizontally | Next/previous face in the selected group |
 | Turn the knob | Tick and hourly-bell volume; zero mutes both |
-| Hold the knob about 1.5 seconds | Open the group menu |
+| Hold the knob about 1 second | Open the group menu |
 | Turn in the menu, then press | Choose a group |
 | Hold again, or wait 30 seconds | Close the menu |
 
@@ -46,7 +46,8 @@ Selections save immediately to independent, checksummed SD records and survive
 restart. They do not rebuild artwork automatically. With pending changes, opening
 the group menu offers **Build Now** or **Later**. Later retains the existing
 Favorites and adds **Update Favorites** to the normal menu. That choice is
-remembered; only additional changes cause another prompt.
+remembered; only additional changes cause another prompt. After building, the
+group menu reopens so you can select Favorites or another library immediately.
 
 An approved rebuild copies the original compressed artwork/fonts on the Orb,
 splits by actual packed size, decoded-image RAM and font metadata (with allocator

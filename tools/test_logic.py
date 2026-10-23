@@ -62,14 +62,14 @@ int main() {
     button.update(false,2200);
     assert(button.update(false,2230)==ClockButton::SHORT_PRESS);
     button.update(true,3000);button.update(true,3030);
-    assert(button.update(true,4529)==ClockButton::NONE);
-    assert(button.update(true,4530)==ClockButton::LONG_PRESS);
+    assert(button.update(true,4029)==ClockButton::NONE);
+    assert(button.update(true,4030)==ClockButton::LONG_PRESS);
     assert(button.update(true,8000)==ClockButton::NONE); // holding cannot repeat
     button.update(false,8100);
     assert(button.update(false,8130)==ClockButton::NONE); // release cannot also switch face
     button.update(true,9000);button.update(true,9030);
-    assert(button.update(false,10600)==ClockButton::LONG_PRESS); // skipped deadline sample
-    assert(button.update(false,10630)==ClockButton::NONE);
+    assert(button.update(false,10030)==ClockButton::LONG_PRESS); // skipped deadline sample
+    assert(button.update(false,10060)==ClockButton::NONE);
     TickGate ticks;
     assert(!ticks.update(0,false,true));
     assert(!ticks.update(100,true,true)); // no boot tick

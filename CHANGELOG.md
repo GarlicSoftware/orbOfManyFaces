@@ -1,5 +1,7 @@
 # Unreleased - Favorites development
 
+- Favorites builds return to the group menu; the knob hold now takes one second.
+
 - Short knob press saves/removes a favorite without navigating; brief star feedback.
 - Persistent selections, revision-scoped Build Now/Later and Update Favorites.
 - On-device .ocg assembly with actual memory budgets, buffered writes, validation
