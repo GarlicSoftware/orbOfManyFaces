@@ -1,3 +1,14 @@
+# Unreleased - Favorites development
+
+- Short knob press saves/removes a favorite without navigating; brief star feedback.
+- Persistent selections, revision-scoped Build Now/Later and Update Favorites.
+- On-device .ocg assembly with actual memory budgets, buffered writes, validation
+  and transactional catalog replacement; existing groups survive failed builds.
+- Whimsical display names, consolidation and scrolling long menu labels.
+- Favorites contain only selected faces; no automatic Blue Meridian.
+- RAM-cached switching, allocator headroom and recovery for fragmented image RAM.
+- Custom Clock Face Importer remains the next roadmap feature.
+
 # Version 0.5.1
 
 - Correct PyPI dependency to esptool 4.8.1; recommend Python 3.12.

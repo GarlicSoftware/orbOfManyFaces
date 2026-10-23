@@ -71,6 +71,7 @@ generations protect against interrupted writes. The compact bookmark index retai
 source references for removed faces so they can be re-added from an old Favorites
 library; it currently holds up to 512 distinct face identities. No original `.ocg`
 library is modified. Future importer work is tracked in [ROADMAP.md](ROADMAP.md).
+Development checks are recorded in [favorites validation](docs/favorites-validation.md).
 
 USB maintenance commands include `favorites status`, `favorites toggle`,
 `favorites later`, `favorites build` and `menu choose N` (zero-based visible choice).
