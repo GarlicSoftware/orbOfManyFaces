@@ -6,12 +6,11 @@ import json
 import sys
 import time
 import serial
-from PIL import Image
 
 
 class Clock:
     def __init__(self,port='COM7'):
-        self.serial=serial.Serial(port=None,baudrate=115200,timeout=.15)
+        self.serial=serial.Serial(port=None,baudrate=115200,timeout=.15,write_timeout=5)
         self.serial.port=port;self.serial.dtr=False;self.serial.rts=False
         self.serial.open();self.serial.reset_input_buffer();self.buffer=bytearray()
         # USB-JTAG may discard the first response just after reopening its host
@@ -22,20 +21,26 @@ class Clock:
                 # A delayed hello from an earlier retry can arrive after the
                 # first successful reply. Drain those before any mutation so
                 # its acknowledgement cannot be mistaken for the next command.
+                drain_end=time.monotonic()+1
                 quiet=time.monotonic()+.25
-                while time.monotonic()<quiet:
+                while time.monotonic()<min(quiet,drain_end):
                     if self.serial.in_waiting:
                         self.serial.read(self.serial.in_waiting);quiet=time.monotonic()+.25
                     else:time.sleep(.01)
                 self.buffer.clear()
                 break
             except TimeoutError:
-                if attempt==2:raise
+                if attempt==2:
+                    self.serial.close();raise
+            except (OSError,RuntimeError):
+                self.serial.close();raise
 
     def command(self,cmd,timeout=20):
-        readonly=cmd in ('status','hello','groups','audio status')
+        readonly=cmd in ('status','hello','groups','audio status','sd status') or cmd.startswith('sd info ')
         def matches(reply):
             if cmd in ('status','hello'):return 'fw' in reply
+            if cmd=='sd status':return 'sd_protocol' in reply
+            if cmd.startswith('sd info '):return reply.get('file')==cmd[8:]
             if cmd=='groups':return 'groups' in reply
             if cmd=='capture':return 'bytes' in reply
             if cmd.startswith('face '):return 'fw' not in reply and reply.get('face')==int(cmd[5:])
@@ -43,7 +48,7 @@ class Clock:
             return True
         for attempt in range(4 if readonly else 1):
             self.serial.write(('\n?clock '+cmd+'\n').encode())
-            try:return self.response(min(timeout,2) if readonly else timeout,cmd,matches)
+            try:return self.response(timeout if cmd.startswith('sd ') else (min(timeout,2) if readonly else timeout),cmd,matches)
             except TimeoutError:
                 if not readonly or attempt==3:raise
 
@@ -72,6 +77,7 @@ class Clock:
         raise TimeoutError('face render')
 
     def capture(self,path):
+        from PIL import Image
         # Establish a small round-trip before starting a large USB transfer.
         self.command('status')
         result=self.command('capture')

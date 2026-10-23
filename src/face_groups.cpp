@@ -6,6 +6,7 @@
 #include "group_format.h"
 #include "renderer.h"
 #include <algorithm>
+#include <mbedtls/sha256.h>
 
 namespace {
 SPIClass sdSpi(HSPI);
@@ -18,7 +19,7 @@ uint8_t *pack=nullptr;
 int current=0;
 uint32_t sdReads=0,cachedBytes=0;
 String error;
-File upload;String uploadPath;uint32_t remaining=0,uploadSize=0;
+File upload;String uploadPath,uploadHash;uint32_t remaining=0,uploadSize=0;
 uint32_t uploadActivity=0;
 bool mount() {
     if(mounted)return true;
@@ -94,16 +95,43 @@ bool groupSelect(int index) {
     if(!rendererPrepare(0)){builtin();return fail("Cannot prepare Meridian");}
     current=index;cachedBytes=size;sdReads+=size;return true;
 }
+
+bool safeName(const char *name) {
+    size_t n=strlen(name);return n>=5&&n<=60&&!strcmp(name+n-4,".ocg")&&
+        strspn(name,"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")==n&&!strstr(name,"..");
+}
+// Stream from SD again: this verifies stored bytes, not just USB reception.
+bool fileInfo(const String &path,String &digest,uint32_t &bytes,uint16_t &count) {
+    File f=SD.open(path);if(!f)return fail("Cannot read pack");
+    bytes=f.size();uint8_t head[24];
+    if(bytes<24||bytes>clockpack::MAX_PACK||f.read(head,24)!=24||memcmp(head,"ORBGRP01",8))return fail("Invalid pack header");
+    clockpack::Reader r{head+8,head+24};auto faces=r.u32(),payload=r.u32(),expected=r.u32(),raw=r.u32();
+    if(!faces||faces>32||payload!=bytes-24||raw>clockpack::MAX_RAW)return fail("Invalid pack size/count");
+    mbedtls_sha256_context ctx;mbedtls_sha256_init(&ctx);mbedtls_sha256_starts(&ctx,0);mbedtls_sha256_update(&ctx,head,24);
+    uint32_t crc=~0u,left=payload;bool ok=true;uint8_t block[2048],hash[32];
+    while(left) {
+        size_t n=min(size_t(left),sizeof(block));if(f.read(block,n)!=n){ok=false;break;}
+        mbedtls_sha256_update(&ctx,block,n);
+        for(size_t j=0;j<n;++j){crc^=block[j];for(int i=0;i<8;++i)crc=(crc>>1)^(0xedb88320u&uint32_t(-int(crc&1)));}
+        left-=n;delay(1);
+    }
+    mbedtls_sha256_finish(&ctx,hash);mbedtls_sha256_free(&ctx);f.close();
+    if(!ok||~crc!=expected)return fail("SD readback/checksum failed");
+    char hex[65];for(int i=0;i<32;++i)sprintf(hex+i*2,"%02x",hash[i]);digest=hex;count=faces;return true;
+}
+
 bool groupUploading(){return bool(upload);}
 void groupUploadPoll(){if(upload&&millis()-uploadActivity>15000)groupUploadAbort();}
 uint32_t groupSdReadBytes(){return sdReads;}
 uint32_t groupCachedBytes(){return cachedBytes;}
 void groupUploadAbort(){if(upload){upload.close();SD.remove(uploadPath+".part");Serial.setRxBufferSize(256);}remaining=0;}
-bool groupUploadBegin(const char *name,uint32_t bytes) {
+bool groupUploadBegin(const char *name,uint32_t bytes,const char *sha256) {
     groupUploadAbort();
     error="";
     if(!mount())return false;
     size_t n=strlen(name);if(n<5||n>60||strcmp(name+n-4,".ocg")||strspn(name,"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")!=n||strstr(name,".."))return fail("Invalid pack filename");
+    if(sha256[0]&&(strlen(sha256)!=64||strspn(sha256,"0123456789abcdef")!=64))return fail("Invalid SHA256");
+    uploadHash=sha256;
     if(bytes<24||bytes>clockpack::MAX_PACK)return fail("Invalid upload size");
     SD.mkdir("/clock-groups");uploadPath=String("/clock-groups/")+name;
     if(SD.exists(uploadPath))return fail("Group already exists");
@@ -131,7 +159,27 @@ bool groupUploadChunk(uint32_t offset,uint32_t bytes) {
 bool groupUploadFinish() {
     if(!upload||remaining)return fail("Upload incomplete");
     upload.flush();upload.close();Serial.setRxBufferSize(256);
+    String digest;uint32_t bytes=0;uint16_t count=0;
+    if(!fileInfo(uploadPath+".part",digest,bytes,count)||bytes!=uploadSize||
+       (uploadHash.length()&&digest!=uploadHash)) {
+        SD.remove(uploadPath+".part");return fail("SD readback/checksum failed");
+    }
+    if(SD.exists(uploadPath))return fail("Group already exists");
     if(!SD.rename(uploadPath+".part",uploadPath))return fail("Cannot finalize upload");
     // Scan only names here. Full checksum, geometry and decode checks precede selection.
     groupsScan();return true;
+}
+
+void groupSdStatus() {
+    bool available=mount();
+    Serial.printf("!clock {\"ok\":true,\"sd_protocol\":1,\"available\":%s,\"built_in_face_count\":%d,\"free_bytes\":%llu}\n",
+        available?"true":"false",FACE_COUNT,available?(unsigned long long)(SD.totalBytes()-SD.usedBytes()):0ULL);
+}
+void groupSdInfo(const char *name) {
+    if(!safeName(name)||!mount()){Serial.println("!clock {\"ok\":false,\"error\":\"Invalid filename or SD unavailable\"}");return;}
+    String path=String("/clock-groups/")+name;
+    if(!SD.exists(path)){Serial.printf("!clock {\"ok\":true,\"file\":\"%s\",\"exists\":false}\n",name);return;}
+    String digest;uint32_t bytes=0;uint16_t count=0;bool valid=fileInfo(path,digest,bytes,count);
+    Serial.printf("!clock {\"ok\":true,\"file\":\"%s\",\"exists\":true,\"valid\":%s,\"bytes\":%lu,\"faces\":%u,\"sha256\":\"%s\"}\n",
+        name,valid?"true":"false",(unsigned long)bytes,count,digest.c_str());
 }

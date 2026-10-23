@@ -1,3 +1,19 @@
+# Version 0.5.1
+
+- Correct PyPI dependency to esptool 4.8.1; recommend Python 3.12.
+- One install command now flashes firmware and uploads all four SD libraries:
+  eight built-in faces plus 34 on SD, 42 distinct designs.
+- Safe to rerun on an existing installation, including v0.5.0; matching packs
+  are verified and skipped, settings and unrelated files are retained.
+- Read back SD uploads with CRC32 and SHA-256 before committing; refuse conflicts.
+- Missing cards or optional upload errors leave flashed firmware usable and
+  report verified face totals with retry instructions.
+- Add --sd-only recovery and --skip-sd; retain the separate manual uploader.
+- Preserve complete 16 MB backups, image hashes and protected flash regions.
+
+Download **orbOfManyFaces-0.5.1.zip** from release Assets (not GitHub's source ZIP).
+See README.md for installation and library controls.
+
 # Version 0.5.0
 
 - One short hourly bell, sharing knob volume with the ticking. Zero mutes both.

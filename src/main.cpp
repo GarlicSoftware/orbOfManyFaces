@@ -14,7 +14,7 @@
 #include "face_groups.h"
 
 namespace {
-constexpr char VERSION[]="Meridian Clock 0.5.0";
+constexpr char VERSION[]="Meridian Clock 0.5.1";
 constexpr uint8_t RTC=0x51,TOUCH=0x5A;
 Preferences clockPrefs;
 String tzRule;
@@ -196,8 +196,10 @@ void handleCommand(char *line) {
         char *end=nullptr;long target=strtol(cmd+6,&end,10);
         if(end==cmd+6||*end||target<0||target>=groupsCount()){Serial.println("!clock {\"ok\":false,\"error\":\"invalid group\"}");return;}
         chooseGroup(target);Serial.printf("!clock {\"ok\":%s,\"group\":%d,\"error\":\"%s\"}\n",menuOpen?"false":"true",groupCurrent(),groupError());
+    } else if (!strcmp(cmd,"sd status")) {groupSdStatus();
+    } else if (!strncmp(cmd,"sd info ",8)) {groupSdInfo(cmd+8);
     } else if (!strncmp(cmd,"sd begin ",9)) {
-        char filename[64];unsigned long bytes=0;bool ok=sscanf(cmd+9,"%63s %lu",filename,&bytes)==2&&groupUploadBegin(filename,bytes);
+        char filename[64],hash[65]={};unsigned long bytes=0;bool ok=sscanf(cmd+9,"%63s %lu %64s",filename,&bytes,hash)>=2&&groupUploadBegin(filename,bytes,hash);
         Serial.printf("!clock {\"ok\":%s,\"error\":\"%s\"}\n",ok?"true":"false",groupError());
     } else if (!strncmp(cmd,"sd chunk ",9)) {
         unsigned long offset=0,bytes=0;bool ok=sscanf(cmd+9,"%lu %lu",&offset,&bytes)==2&&groupUploadChunk(offset,bytes);

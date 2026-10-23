@@ -4,7 +4,7 @@ A lightweight clock-only firmware for the Waveshare **ESP32-S3-Touch-AMOLED-1.75
 Orb: swipe through clocks, turn the knob for volume, and hear a bell on the hour.
 
 **[Download the installer ZIP from Releases](https://github.com/GarlicSoftware/orbOfManyFaces/releases/latest).**
-Use the ZIP attached under **Assets**. GitHub's **Code → Download ZIP** downloads
+Use the ZIP attached under **Assets**. GitHub's **Code â†’ Download ZIP** downloads
 source code and does not include the compiled installer images.
 
 ![Meridian Midnight](docs/meridian-midnight.png)
@@ -15,11 +15,11 @@ source code and does not include the compiled installer images.
 |---|---|
 | Swipe horizontally | Next/previous face in the selected group |
 | Turn the knob | Tick and hourly-bell volume; zero mutes both |
-| Hold the knob about 1½ seconds | Open the group menu |
+| Hold the knob about 1Â½ seconds | Open the group menu |
 | Turn in the menu, then press | Choose a group |
 | Hold again, or wait 30 seconds | Close the menu |
 
-Version **0.5.0** includes eight built-in faces and 34 additional CC0 clock faces
+Version **0.5.1** includes eight built-in faces and 34 additional CC0 clock faces
 in four SD groups: **42 distinct designs**. Blue Meridian is first in every SD
 group and remains available without a card. The other Meridian face is Brass &
 Parchment. Group, face and volume are remembered after restart.
@@ -36,7 +36,7 @@ loading across the hour. Volume zero mutes the bell and ticks together.
 
 ## Hardware and preparation
 
-Use the Waveshare **ESP32-S3-Touch-AMOLED-1.75**, with 466×466 CO5300 display,
+Use the Waveshare **ESP32-S3-Touch-AMOLED-1.75**, with 466Ã—466 CO5300 display,
 16 MB flash, 8 MB PSRAM, CST9217 touch and ES8311 audio. Similar round displays
 and enclosures can contain different boards and require a firmware port.
 
@@ -48,10 +48,49 @@ is stored, its fallback is US Eastern; a USB override is available, for example
 
 ## Install the Release ZIP
 
-1. Install Python 3, then `python -m pip install esptool==4.8.6`.
+1. Install **Python 3.12** (recommended). The installer is tested on Python 3.10–3.12;
+   newer Python versions are not qualified. If dependencies fail on a newer version,
+   use Python 3.12. On Windows, enable Python's PATH option or use `py -3.12` instead
+   of `python` in the commands below.
 2. Extract the Release ZIP and open a terminal inside its extracted folder.
-3. Run `python install.py --check` to verify image hashes without hardware access.
-4. Connect USB, close other serial programs, then run `python install.py --port COM7`.
+3. Install the two installer dependencies:
+
+   ```text
+   python -m pip install -r requirements-install.txt
+   ```
+
+   This installs `esptool==4.8.1` and `pyserial==3.5`. No graphics libraries are needed.
+4. Connect USB with a compatible FAT32 SD card already installed, close other
+   serial programs, then run **one installation command**:
+
+   ```text
+   python install.py --port COM7
+   ```
+
+The installer verifies all packaged images and packs, backs up your Orb, flashes
+firmware, waits for reboot, then uploads all four SD libraries through USB.
+**Eight faces live in firmware and 34 additional faces live on SD: 42 total.**
+The completion summary names installed or verified existing packs and reports the
+number of faces verified available from this release. Other user libraries are
+not included in that count.
+
+**Already running Orb of Many Faces, including v0.5.0? Run the same command.**
+It preserves settings and existing SD files, skips packs whose stored size and
+SHA-256 match, and refuses to overwrite conflicting files. You do not need to
+open the Orb or remove its card. Interrupted uploads use temporary `.part` files;
+retrying restarts only incomplete packs. Transfers are read back and checked
+before becoming visible in the menu. Your current face/library is retained.
+
+Hold the knob about **1½ seconds**, turn to a library, then press once to load it.
+Swipe horizontally to change faces within it. Turn the knob outside the menu
+for volume. Blue Meridian is included in every library.
+
+Without a working card, firmware installation still succeeds with eight built-in
+faces. A full card, conflicting filename, unplugged USB or other optional upload
+failure produces an explanation and a retry command. After a successful flash,
+optional SD errors do not change the installer's success exit status; inspect the
+face-count summary for SD completion. `--sd-only` and the manual uploader return
+a failure exit status if any pack could not be verified.
 
 Replace `COM7` with the actual device port. Linux commonly uses `/dev/ttyACM0`;
 macOS commonly uses `/dev/cu.usbmodem...`. If necessary, hold BOOT, tap RESET,
@@ -60,7 +99,8 @@ release BOOT, and try again.
 The installer saves a complete **recipient-device 16 MB backup** before writing.
 It checks the backup size, then writes the supplied bootloader, partition table
 and app at their explicit addresses. It does not whole-chip erase or overwrite
-NVS/settings, themeart or the SD card. The backup contains the recipient's own
+NVS/settings or themeart. SD uploads write only the bundled filenames under
+`/clock-groups/`; they never format the card or replace existing final files. The backup contains the recipient's own
 settings; keep it private. `python install.py --port COM7 --dry-run` shows the
 commands without accessing hardware.
 
@@ -70,24 +110,34 @@ To restore, substitute the actual backup path and port:
 python -m esptool --chip esp32s3 --port COM7 write_flash 0x0 orb-backups/DATE-TIME/orb-before-install.bin
 ```
 
-## Add the included SD groups
+## Retry or manually install SD groups
 
-The eight built-in clocks work immediately. For the other 34 faces, copy the
-`.ocg` files listed in `sd-groups/index.json` into **`/clock-groups/` at the root
-of a FAT32 SD card**. Leave existing `/themes/` and other files in place; no
-formatting is needed to add groups to a compatible existing card. Open the knob
-menu to discover the groups.
-
-Alternatively, copy them through the connected Orb's USB port:
+Normal installation already uploads all four packs. If the card was missing or a
+transfer failed, retry **without flashing again or changing settings**:
 
 ```text
-python -m pip install pyserial==3.5 Pillow
+python install.py --port COM7 --sd-only
+```
+
+The separate uploader remains available for troubleshooting (requires v0.5.1
+firmware for verified uploads):
+
+```text
 python tools/upload_groups.py --port COM7
 ```
 
-Uploads use new filenames and refuse overwrites. Interrupted `.part` files do
-not appear in the menu. Missing, corrupt or oversized groups fall back to the
-built-in clocks. A group already cached in RAM continues working if SD is removed.
+For a filename conflict, the existing file is left untouched. Keep a copy and
+rename it yourself before retrying if appropriate; the installer never decides
+that a different user file is safe to replace. Check USB connection/port and free
+space if a transfer fails. Use `--skip-sd` for a firmware-only install.
+`python install.py --check` verifies the ZIP contents without hardware access.
+
+As a final fallback, manually copy the four `.ocg` files listed in
+`sd-groups/index.json` into **`/clock-groups/` at the root of a FAT32 SD card**.
+Keep existing `/themes/` and unrelated files. No formatting is needed for a
+compatible card. Restart the Orb to rescan manually copied groups. Missing,
+corrupt or oversized groups fall back to the built-in clocks. A group cached
+in RAM continues working if SD is removed.
 
 ## Source and new faces
 
