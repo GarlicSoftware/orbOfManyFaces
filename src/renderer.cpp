@@ -334,7 +334,17 @@ void rendererSetFaces(const Face *items,int count) {
     for(auto &p:decoded){free(p);p=nullptr;}decodedFace=-1;
     activeFaces=items;activeCount=count;
 }
-bool rendererPrepare(int face){return face>=0&&face<activeCount&&loadFace(face);}
+bool rendererPrepare(int face){
+    if(face<0||face>=activeCount)return false;
+    if(loadFace(face))return true;
+    // Fragmentation can prevent two decoded faces coexisting even when their
+    // summed byte budget fits. Keep the previous pixels visible and retry with
+    // only the requested face's images resident. Compressed art stays in RAM.
+    const int old=decodedFace;for(auto &p:decoded){free(p);p=nullptr;}decodedFace=-1;
+    if(loadFace(face))return true;
+    if(old>=0)loadFace(old);
+    return false;
+}
 void rendererMenu(const char *const *names,int count,int selected,const char *message) {
     starBackgroundValid=false;
     for(int i=0;i<W*H;++i)frame[i]=0x0841;

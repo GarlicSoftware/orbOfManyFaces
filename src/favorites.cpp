@@ -27,14 +27,23 @@ struct Memory:clockpack::Output {
     void bytes(const uint8_t *p,size_t n)override{if(n)data.insert(data.end(),p,p+n);}
 };
 struct Hash:clockpack::Output {
-    mbedtls_sha256_context ctx;File file;uint32_t size=0;
+    mbedtls_sha256_context ctx;File file;uint32_t size=0;uint8_t *pending=nullptr;size_t buffered=0;
     Hash(){mbedtls_sha256_init(&ctx);mbedtls_sha256_starts(&ctx,0);}
-    ~Hash(){mbedtls_sha256_free(&ctx);}
+    ~Hash(){free(pending);mbedtls_sha256_free(&ctx);}
+    void flushBuffer(){if(!buffered)return;if(file.write(pending,buffered)!=buffered)throw std::runtime_error("Favorites SD write failed");buffered=0;delay(1);}
+    void stored(const uint8_t *p,size_t n){
+        while(n){
+            if(!buffered&&n>=4096){size_t k=std::min(n,size_t(16384));if(file.write(p,k)!=k)throw std::runtime_error("Favorites SD write failed");p+=k;n-=k;delay(1);continue;}
+            if(!pending){pending=(uint8_t*)heap_caps_malloc(4096,MALLOC_CAP_INTERNAL);if(!pending)throw std::bad_alloc();}
+            size_t k=std::min(n,size_t(4096-buffered));memcpy(pending+buffered,p,k);buffered+=k;p+=k;n-=k;if(buffered==4096)flushBuffer();
+        }
+    }
     void bytes(const uint8_t *p,size_t n)override{
         size+=n;
-        while(n){size_t k=std::min(n,size_t(16384));if(file&&file.write(p,k)!=k)throw std::runtime_error("Favorites SD write failed");mbedtls_sha256_update(&ctx,p,k);p+=k;n-=k;if(file)delay(1);}
+        while(n){size_t k=std::min(n,size_t(16384));if(file)stored(p,k);mbedtls_sha256_update(&ctx,p,k);p+=k;n-=k;}
     }
-    void finish(uint8_t *digest){mbedtls_sha256_finish(&ctx,digest);if(file){file.flush();file.close();}}
+    void finish(uint8_t *digest){if(file){flushBuffer();file.flush();file.close();}mbedtls_sha256_finish(&ctx,digest);}
+
 };
 struct Record {uint8_t key[32];char source[61];uint16_t index=0;bool selected=false;};
 using Records=std::vector<Record,Psram<Record>>;
@@ -194,7 +203,8 @@ bool favoritesBuild(void (*progress)(const char *)){
                 sizes.push_back({w.size,clockpack::decodedBytes(face),clockpack::metadataBytes(face)});
             }
             source.clear();
-            uint32_t ram=ESP.getFreePsram(),heap=heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+            // Keep working headroom for allocator fragmentation and retained configuration.
+            uint32_t ram=std::min(ESP.getFreePsram(),uint32_t(6*1024*1024)),heap=heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
             bins=favorites::partition(sizes,ram,heap);
             for(unsigned b=0;b<bins.size();++b){
                 char message[48];snprintf(message,sizeof(message),"Packing Favorites %u/%u",b+1,unsigned(bins.size()));progress(message);

@@ -49,7 +49,8 @@ Favorites and adds **Update Favorites** to the normal menu. That choice is
 remembered; only additional changes cause another prompt.
 
 An approved rebuild copies the original compressed artwork/fonts on the Orb,
-splits by actual packed size, decoded-image RAM and font metadata, shows progress,
+splits by actual packed size, decoded-image RAM and font metadata (with allocator
+headroom), shows progress,
 and validates every replacement before committing the new catalog. Existing
 libraries and the previous Favorites remain intact if building fails. Missing
 source artwork causes an error rather than silently dropping a bookmark. Keep

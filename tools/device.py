@@ -60,6 +60,8 @@ class Clock:
                 self.buffer.extend(self.serial.read(self.serial.in_waiting or 1))
                 continue
             line,_,rest=self.buffer.partition(b'\n');self.buffer=bytearray(rest)
+            if line.startswith(b'[favorites] ') and getattr(self,'progress',None):
+                self.progress(line[12:].decode(errors='replace'))
             if line.startswith(b'!clock '):
                 try:response=json.loads(line[7:])
                 except json.JSONDecodeError:continue

@@ -258,7 +258,7 @@ void handleCommand(char *line) {
     } else if (!strncmp(cmd,"face ",5)) {
         char *end=nullptr;const long choice=strtol(cmd+5,&end,10);
         if (end==cmd+5 || *end || choice<0 || choice>=groupFaceCount()) {Serial.println("!clock {\"ok\":false,\"error\":\"invalid face\"}");return;}
-        changeFace(int(choice));Serial.printf("!clock {\"ok\":true,\"face\":%d}\n",face);
+        changeFace(int(choice));Serial.printf("!clock {\"ok\":%s,\"face\":%d,\"error\":\"%s\"}\n",face==choice?"true":"false",face,face==choice?"":"Face image RAM unavailable");
     } else if (!strcmp(cmd,"next")) {
         changeFace(wrapFace(face,1,groupFaceCount()));Serial.printf("!clock {\"ok\":true,\"face\":%d}\n",face);
     } else if (!strcmp(cmd,"ticking on") || !strcmp(cmd,"ticking off")) {

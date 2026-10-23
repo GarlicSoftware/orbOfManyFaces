@@ -68,7 +68,8 @@ heap=r'''
 #define MALLOC_CAP_SPIRAM 1
 #define MALLOC_CAP_INTERNAL 2
 #define MALLOC_CAP_DMA 4
-inline void *heap_caps_malloc(size_t bytes,int){return malloc(bytes);}
+inline bool failNextAllocation=false;
+inline void *heap_caps_malloc(size_t bytes,int){if(failNextAllocation){failNextAllocation=false;return nullptr;}return malloc(bytes);}
 '''
 test=r'''
 #define _USE_MATH_DEFINES
@@ -78,6 +79,7 @@ test=r'''
 #include <cstdio>
 #include <vector>
 #include "Arduino_GFX_Library.h"
+#include "esp_heap_caps.h"
 #include "renderer.h"
 #include "assets.h"
 int main(){
@@ -114,6 +116,8 @@ int main(){
    }
    std::fclose(file);
  }
+ rendererFavorite(0,1,false);assert(rendererPrepare(0));failNextAllocation=true;assert(rendererPrepare(1));assert(!failNextAllocation);renderClock(1,preview,true,true);assert(!memcmp(physicalPanel,rendererCapture(),466*466*2));
+ std::puts("PASS: face-switch allocation failure recovers using RAM-resident artwork");
  for(int angle:{0,90,37}){
   std::printf("Testing star orientation %d\n",angle);
   assert(rendererBegin(200,angle));tm local={};local.tm_year=126;local.tm_mon=9;local.tm_mday=22;local.tm_wday=4;local.tm_hour=10;local.tm_min=9;local.tm_sec=13;rendererFavorite(0,1,false);renderClock(0,local,true,true);
