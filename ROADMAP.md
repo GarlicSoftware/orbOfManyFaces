@@ -101,3 +101,16 @@ boundary the group change wins, opening the new group's first face.
 These enhancements are separate from the released v0.5.1 installer. Favorites
 and both timers are on the development branch. The importer remains the next
 major feature; public release packaging is a separate step.
+
+## 5. Simplified installation
+
+Windows first: a portable GUI flasher with its own private Python runtime,
+automatic port selection, full backup, protected firmware installation, verified
+SD upload/repair and a shortcut to on-device Wi-Fi/time setup. Reuse the tested
+installer and transfer implementation. End users should not install Python, run
+pip or use terminal commands. Keep manual installation as a fallback.
+
+Browser flasher follows later, with the same backup, settings protection and
+complete library installation guarantees. A future update check/download feature
+can let an existing app acquire new releases; the first Windows app deliberately
+bundles a specific verified firmware version.

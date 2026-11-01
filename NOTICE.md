@@ -1,5 +1,12 @@
 # Notices
 
+The Windows flasher (`flasher.py`, `tools/flasher_backend.py` and
+`tools/build_windows_flasher.py`) is GPL-2.0-or-later, including the bundled
+esptool 4.8.1. See `licenses/Flasher-GPL-2.0.txt`. Its Windows ZIP includes the
+flasher source, unmodified esptool Python source, build requirements and bundled
+dependency license notices in `SOURCE.zip` and `licenses/`. This does not change
+the MIT firmware or the artwork's existing licenses.
+
 Orb of Many Faces is a clock-only derivative using hardware protocol information
 and codec initialization from Orb OS, copyright 2026 Quique Tortosa (socquique)
 and Zion Brock (Ziplock78), MIT. Their notice is retained in LICENSE.

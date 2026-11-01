@@ -170,6 +170,45 @@ available, for example `?clock timezone UTC0` at 115200 baud.
 
 ## Install the Release ZIP
 
+### Windows app (development build)
+
+The Windows x64 flasher ZIP is named
+`orbOfManyFaces-Flasher-0.7.0-windows-x64.zip`. It is a portable application: extract
+the ZIP and double-click **OrbOfManyFaces-Flasher.exe**. Python 3.12, esptool 4.8.1,
+pyserial and the public 42-face firmware/libraries are included. No Python or pip
+installation, administrator privileges, terminal commands or internet download
+of dependencies is required on the recipient's computer.
+
+1. Connect the Orb with a USB data cable and keep its SD card installed.
+2. Select the Orb's port if it was not selected automatically. **Check connection**
+   checks for ESP32-S3 and 16 MB flash without installing firmware.
+3. Click **Install / Update all 42 faces**. Leave the window and USB connection
+   open through the complete backup, protected flash and verified SD uploads.
+4. Click **Wi-Fi & time setup**, then use your phone and the instructions on the
+   Orb to save Wi-Fi and select the correct region.
+
+The same button supports first installations and upgrades from existing clock
+firmware. Matching SD libraries are verified/skipped; unrelated files and settings
+are preserved. If SD installation fails, firmware remains usable and **Repair SD
+libraries** retries without flashing. The completion screen reports the number of
+verified faces. **Open backups & logs** opens `%LOCALAPPDATA%\OrbOfManyFaces`.
+Backups contain private device settings and stay on the recipient's computer.
+
+Each EXE contains one firmware release. To upgrade later, download that release's
+new flasher. Automatic discovery/download of new releases and a browser flasher
+are future work. This development asset is not yet part of the published v0.5.1
+release. The app is unsigned; Windows may display a publisher/trust prompt.
+
+The ZIP includes license notices and `SOURCE.zip` with flasher/esptool source and
+rebuild instructions. Firmware/artwork licenses are unchanged. Developers build
+with Windows x64 Python 3.12, `requirements-flasher-build.txt`, then
+`python tools/build_windows_flasher.py` after compiling the public firmware.
+
+See [Windows flasher validation](docs/windows-flasher-validation.md) for checks
+and hardware-test limits.
+
+### Manual Python installer (all supported platforms)
+
 1. Install **Python 3.12** (recommended). The installer is tested on Python 3.10-3.12;
    newer Python versions are not qualified. If dependencies fail on a newer version,
    use Python 3.12. On Windows, enable Python's PATH option or use `py -3.12` instead

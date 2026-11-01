@@ -1,5 +1,11 @@
 # Unreleased - Favorites development
 
+- Portable Windows x64 flasher bundles Python/esptool and the public firmware:
+  automatic port detection, chip/flash-size checks, full backup, protected upgrade,
+  verified SD uploads/repair, saved logs and Wi-Fi/time setup shortcut.
+- Windows release builds and frozen-payload verification run in GitHub Actions;
+  the manual Python installer remains available.
+
 - Temporary password-protected Wi-Fi/time setup hotspot and phone page; verified
   credentials saved independently of stock firmware, with failed-trial rollback.
 - On-device regional time-zone selection, explicit DST/no-DST choices and USB

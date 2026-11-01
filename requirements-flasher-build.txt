@@ -1,0 +1,4 @@
+# Build-time dependencies only. End users do not install Python or pip packages.
+esptool==4.8.1
+pyserial==3.5
+pyinstaller==6.22.3

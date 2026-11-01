@@ -45,7 +45,9 @@ def validate():
             raise ValueError('SD pack verification failed: '+item['file'])
     return manifest
 
-def main():
+def main(argv=None, runner=None, backup_root=None, on_phase=None):
+    run=runner or subprocess.run
+    phase=on_phase or (lambda name: None)
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',help='The recipient Orb serial port, e.g. COM7')
     parser.add_argument('--check',action='store_true',help='Only verify packaged images; do not access hardware')
@@ -53,7 +55,7 @@ def main():
     mode=parser.add_mutually_exclusive_group()
     mode.add_argument('--sd-only',action='store_true',help='Repair/install SD packs without flashing or changing settings')
     mode.add_argument('--skip-sd',action='store_true',help='Install firmware only')
-    args=parser.parse_args()
+    args=parser.parse_args(argv)
     manifest=validate()
     print('Verified:',manifest['release'])
     print('Hardware:',manifest['board'])
@@ -72,7 +74,7 @@ def main():
         return
     common=[sys.executable,'-m','esptool','--chip','esp32s3','--port',args.port,'--baud','921600','--before','default_reset','--after','hard_reset']
     stamp='dry-run' if args.dry_run else datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S-%f')
-    backup=Path.cwd()/'orb-backups'/stamp/'orb-before-install.bin'
+    backup=(Path(backup_root) if backup_root is not None else Path.cwd())/'orb-backups'/stamp/'orb-before-install.bin'
     read=common+['read_flash','0x0',hex(manifest['flash_bytes']),str(backup)]
     write=common+['write_flash']
     for image in manifest['images']:write.extend([image['address'],str(ROOT/image['file'])])
@@ -84,14 +86,16 @@ def main():
     if importlib.util.find_spec('esptool') is None:
         parser.error('Install the flasher first: python -m pip install esptool==4.8.1 pyserial==3.5')
     backup.parent.mkdir(parents=True,exist_ok=False)
+    phase('backup')
     print('Saving the recipient device backup:',backup,flush=True)
-    subprocess.run(read,check=True)
+    run(read,check=True)
     if not backup.is_file() or backup.stat().st_size!=manifest['flash_bytes']:
         raise RuntimeError('Backup is incomplete; firmware has not been written.')
     digest=hashlib.sha256(backup.read_bytes()).hexdigest()
     backup.with_suffix('.sha256').write_text(digest+'  '+backup.name+'\n',encoding='utf-8')
     print('Backup complete. Writing clock firmware; NVS/settings are preserved.',flush=True)
-    subprocess.run(write,check=True)
+    phase('flash')
+    run(write,check=True)
     print('Firmware installed successfully. Backup:',backup,flush=True)
     if args.skip_sd:
         print('8 built-in faces available. SD installation skipped.')
@@ -103,7 +107,8 @@ def main():
             print('Firmware installation succeeded; optional SD upload failed:',error)
             print('8 built-in faces available; SD face count not verified.')
             print(f'Retry: python install.py --port {args.port} --sd-only')
-    print('Swipe for faces; turn for volume; hold 1.5 seconds, turn and press for libraries.')
+    print('Swipe for faces; turn for volume; hold 1 second, turn and press for libraries.')
+    return {'firmware_installed':True,'backup':str(backup)}
 
 if __name__=='__main__':
     try:main()

@@ -10,3 +10,5 @@ partitions.bin
 manifest.json
 tools/generated/
 previews/
+.flasher-build/
+*.spec
