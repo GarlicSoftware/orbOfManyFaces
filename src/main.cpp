@@ -14,11 +14,13 @@
 #include "face_groups.h"
 #include "favorites.h"
 #include "rotation_logic.h"
+#include "setup_logic.h"
+#include "network_setup.h"
 #include <esp_system.h>
 #include <vector>
 
 namespace {
-constexpr char VERSION[]="Meridian Clock 0.6.0-dev";
+constexpr char VERSION[]="Meridian Clock 0.7.0-dev";
 constexpr uint8_t RTC=0x51,TOUCH=0x5A;
 Preferences clockPrefs;
 String tzRule;
@@ -55,7 +57,7 @@ String menuMessage;
 uint32_t menuActivity=0,lastMenuFrame=0,starStarted=0,lastStarFrame=0;
 bool menuPrompt=false,starActive=false;int starStyle=1;
 
-enum MenuView {GROUP_MENU,SETTINGS_MENU,FACE_INTERVAL,GROUP_INTERVAL,FACE_ORDER,GROUP_ORDER};
+enum MenuView {GROUP_MENU,SETTINGS_MENU,FACE_INTERVAL,GROUP_INTERVAL,FACE_ORDER,GROUP_ORDER,TIME_ZONE_MENU,NETWORK_SETUP_MENU};
 MenuView menuView=GROUP_MENU;
 rotation::Settings rotationSettings;
 rotation::Boundary faceBoundary,groupBoundary;
@@ -71,6 +73,22 @@ uint32_t automaticFaces=0,automaticGroups=0;
 time_t lastRotationPoll=0;
 void resetRotation(){faceBoundary.reset();groupBoundary.reset();lastRotationPoll=0;}
 void invalidateRotationBags(){bagGroup=bagGroups=bagFaces=-1;}
+void closeMenu(){networkSetupStop();menuOpen=false;menuView=GROUP_MENU;forceFrame=true;}
+bool applyTimezone(const String &rule){
+    if(!orbsetup::validZone(std::string(rule.c_str(),rule.length())))return false;
+    if(rule==tzRule)return true;
+    if(clockPrefs.putString("tz",rule)!=rule.length())return false;
+    tzRule=rule;setenv("TZ",tzRule.c_str(),1);tzset();
+    configTzTime(tzRule.c_str(),"pool.ntp.org","time.nist.gov");
+    chimeGate.initialized=false;tickGate.initialized=false;resetRotation();forceFrame=true;return true;
+}
+void openNetworkSetup(){
+    if(groupUploading()){menuMessage="Finish the USB upload first";menuDirty=true;return;}
+    if(networkSetupStart(tzRule,applyTimezone)){menuView=NETWORK_SETUP_MENU;menuOpen=true;menuChoice=0;menuMessage="";}
+    else menuMessage="Could not open Wi-Fi setup";
+    menuDirty=true;menuActivity=millis();
+}
+
 void syncRotationBags(){
     if(rotationSettings.groupShuffle&&bagGroups!=groupsCount()){
         groupBag.reset(groupsCount(),groupCurrent(),esp_random);bagGroups=groupsCount();
@@ -83,20 +101,31 @@ void syncRotationBags(){
 void notifyFavorite(){favoritesFace(face);starActive=favoritesCurrent();starStarted=millis();starStyle=1;rendererFavorite(starActive?255:0,starStyle,false);}
 bool toggleFavorite(){bool ok=favoritesToggle();starActive=true;starStarted=millis();starStyle=ok?(favoritesCurrent()?1:-1):2;rendererFavorite(255,starStyle);return ok;}
 int menuCount(){
-    if(menuView==SETTINGS_MENU)return 5;
+    if(menuView==SETTINGS_MENU)return 7;
+    if(menuView==TIME_ZONE_MENU)return orbsetup::zoneCount+1;
+    if(menuView==NETWORK_SETUP_MENU)return 1;
     if(menuView==FACE_INTERVAL||menuView==GROUP_INTERVAL)return rotation::intervalCount;
     if(menuView==FACE_ORDER||menuView==GROUP_ORDER)return 2;
     return menuPrompt?2:groupsCount()+(favoritesDirty()?1:0)+1;
 }
 
 void drawMenu() {
-    std::vector<const char*> names;String rows[4];const char *title=nullptr;
+    std::vector<const char*> names;String rows[5];const char *title=nullptr;
+    if(menuView==NETWORK_SETUP_MENU){
+        String join=String("Join: ")+networkSetupSsid(),password=String("Password: ")+networkSetupPassword();
+        const char *lines[]={join.c_str(),password.c_str(),"Open 192.168.4.1","No internet is normal","Press knob to finish"};
+        rendererMenu(lines,5,0,networkSetupMessage(),"WI-FI & TIME SETUP");menuDirty=false;lastMenuFrame=millis();return;
+    }
     if(menuView==SETTINGS_MENU){
         rows[0]=String("Face rotation: ")+rotation::labels[rotationSettings.face];
         rows[1]=String("Face order: ")+(rotationSettings.faceShuffle?"Shuffle":"Sequential");
         rows[2]=String("Group rotation: ")+rotation::labels[rotationSettings.group];
         rows[3]=String("Group order: ")+(rotationSettings.groupShuffle?"Shuffle":"Sequential");
-        for(auto &row:rows)names.push_back(row.c_str());names.push_back("Back");title="Settings";
+        for(int i=0;i<4;++i)names.push_back(rows[i].c_str());
+        names.push_back("Wi-Fi & time setup");
+        int index=orbsetup::zoneIndex(tzRule.c_str());rows[4]=String("Time zone: ")+(index>=0?orbsetup::zones[index].label:"Custom / fixed offset");
+        names.push_back(rows[4].c_str());names.push_back("Back");title="Settings";
+    }else if(menuView==TIME_ZONE_MENU){names.push_back("Keep current / Back");for(auto &z:orbsetup::zones)names.push_back(z.label);title="Select your region";
     }else if(menuView==FACE_INTERVAL||menuView==GROUP_INTERVAL){
         for(auto label:rotation::labels)names.push_back(label);
         title=menuView==FACE_INTERVAL?"Face rotation":"Group rotation";
@@ -111,7 +140,7 @@ void openMenu() {
     groupsScan();refreshRotationCatalog();menuView=GROUP_MENU;menuOpen=true;menuDirty=true;menuPrompt=favoritesPrompt();menuChoice=menuPrompt?0:groupCurrent();menuMessage="";menuActivity=millis();swipe=Swipe();
 }
 void chooseGroup(int target) {
-    menuView=GROUP_MENU;
+    networkSetupStop();menuView=GROUP_MENU;
     rendererMenu(nullptr,0,0,"Loading group...");
     bool ok=groupSelect(target);face=0;forceFrame=true;saveFace=true;lastFaceChange=millis();
     // Failure is a safe fallback, not a half-loaded rotation.
@@ -137,9 +166,15 @@ bool rebuildFavorites(){
 }
 void chooseMenu(){
     if(menuView==SETTINGS_MENU){
-        if(menuChoice==4){menuView=GROUP_MENU;menuChoice=groupCurrent();}
+        if(menuChoice==6){menuView=GROUP_MENU;menuChoice=groupCurrent();}
+        else if(menuChoice==4){openNetworkSetup();return;}
+        else if(menuChoice==5){menuView=TIME_ZONE_MENU;menuChoice=orbsetup::zoneIndex(tzRule.c_str())+1;}
         else{const int row=menuChoice;menuView=row==0?FACE_INTERVAL:row==1?FACE_ORDER:row==2?GROUP_INTERVAL:GROUP_ORDER;
             menuChoice=row==0?rotationSettings.face:row==1?rotationSettings.faceShuffle:row==2?rotationSettings.group:rotationSettings.groupShuffle;}
+    }else if(menuView==NETWORK_SETUP_MENU){closeMenu();return;}
+    else if(menuView==TIME_ZONE_MENU){
+        if(menuChoice&&!applyTimezone(orbsetup::zones[menuChoice-1].rule)){menuMessage="Could not save time zone";menuDirty=true;menuActivity=millis();return;}
+        menuView=SETTINGS_MENU;menuChoice=5;
     }else if(menuView!=GROUP_MENU){
         rotation::Settings next=rotationSettings;
         const int row=menuView==FACE_INTERVAL?0:menuView==FACE_ORDER?1:menuView==GROUP_INTERVAL?2:3;
@@ -223,7 +258,7 @@ void serviceRotation(time_t now){
     if(!rotationSettings.face&&!rotationSettings.group)return;
     tm local={};localtime_r(&now,&local);
     const int64_t wall=utcEpoch(local.tm_year+1900,local.tm_mon+1,local.tm_mday,local.tm_hour,local.tm_min,local.tm_sec);
-    const bool blocked=menuOpen||groupUploading()||touchDown||button.stable;
+    const bool blocked=menuOpen||networkSetupActive()||groupUploading()||touchDown||button.stable;
     const bool groupDue=groupBoundary.update(now,wall,rotation::intervals[rotationSettings.group],now>1704067200,blocked);
     const bool faceDue=faceBoundary.update(now,wall,rotation::intervals[rotationSettings.face],now>1704067200,blocked);
     syncRotationBags();
@@ -312,6 +347,13 @@ void replyStatus() {
         (unsigned long)soundToggles,(unsigned long)volumeChanges,button.stable ? "true":"false",groupFaceCount());
 }
 
+void replyTime(time_t now){
+    tm local={},utc={};localtime_r(&now,&local);gmtime_r(&now,&utc);
+    char stamp[32],utcStamp[32];strftime(stamp,sizeof(stamp),"%Y-%m-%d %H:%M:%S",&local);strftime(utcStamp,sizeof(utcStamp),"%Y-%m-%d %H:%M:%S",&utc);
+    long offset=long(utcEpoch(local.tm_year+1900,local.tm_mon+1,local.tm_mday,local.tm_hour,local.tm_min,local.tm_sec)-now);
+    Serial.printf("!clock {\"ok\":true,\"time_status\":true,\"timezone\":\"%s\",\"local_time\":\"%s\",\"utc_time\":\"%s\",\"utc_offset_seconds\":%ld,\"dst\":%s,\"fixed_offset\":%s,\"ntp_synced\":%s,\"wifi_connected\":%s}\n",tzRule.c_str(),stamp,utcStamp,offset,local.tm_isdst>0?"true":"false",orbsetup::fixedZone(tzRule.c_str())?"true":"false",synced?"true":"false",WiFi.status()==WL_CONNECTED?"true":"false");
+}
+
 void handleCommand(char *line) {
     if (strncmp(line,"?clock ",7)!=0) return;
     const char *cmd=line+7;
@@ -326,7 +368,7 @@ void handleCommand(char *line) {
         if(!menuOpen||end==cmd+12||*end||choice<0||choice>=menuCount()){Serial.println("!clock {\"ok\":false,\"error\":\"invalid menu choice\"}");return;}
         menuChoice=choice;chooseMenu();Serial.println("!clock {\"ok\":true}");
     }
-    else if (!strcmp(cmd,"menu cancel")) {menuOpen=false;forceFrame=true;Serial.println("!clock {\"ok\":true}");}
+    else if (!strcmp(cmd,"menu cancel")) {closeMenu();Serial.println("!clock {\"ok\":true}");}
     else if (!strncmp(cmd,"group ",6)) {
         char *end=nullptr;long target=strtol(cmd+6,&end,10);
         if(end==cmd+6||*end||target<0||target>=groupsCount()){Serial.println("!clock {\"ok\":false,\"error\":\"invalid group\"}");return;}
@@ -342,6 +384,14 @@ void handleCommand(char *line) {
     } else if (!strcmp(cmd,"sd finish")) {
         bool ok=groupUploadFinish();if(ok)refreshRotationCatalog();Serial.printf("!clock {\"ok\":%s,\"error\":\"%s\"}\n",ok?"true":"false",groupError());
     } else if (!strcmp(cmd,"sd abort")) {groupUploadAbort();Serial.println("!clock {\"ok\":true}");}
+    else if (!strcmp(cmd,"setup start")){openNetworkSetup();if(networkSetupActive())networkSetupStatus();else Serial.println("!clock {\"ok\":false,\"error\":\"Setup unavailable\"}");}
+    else if (!strcmp(cmd,"setup stop")){closeMenu();networkSetupStatus();}
+    else if (!strcmp(cmd,"setup status")) networkSetupStatus();
+    else if (!strcmp(cmd,"time status")) replyTime(time(nullptr));
+    else if (!strncmp(cmd,"time at ",8)){
+        char *end=nullptr;long long at=strtoll(cmd+8,&end,10);
+        if(end==cmd+8||*end||at<946684800ll||at>4102444800ll){Serial.println("!clock {\"ok\":false,\"error\":\"Invalid diagnostic epoch\"}");return;}replyTime(time_t(at));
+    }
     else if (!strcmp(cmd,"rotation status")) rotationStatus();
     else if (!strncmp(cmd,"rotation set ",13)) {
         int fi,fm,gi,gm;char extra;
@@ -386,13 +436,8 @@ void handleCommand(char *line) {
         Serial.flush();Serial.setTxTimeoutMs(100);
     } else if (!strncmp(cmd,"timezone ",9)) {
         const char *value=cmd+9;
-        if (!*value || strlen(value)>80 || strspn(value,"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,+-<>:/.")!=strlen(value)) {
-            Serial.println("!clock {\"ok\":false,\"error\":\"invalid POSIX timezone\"}");
-            return;
-        }
-        tzRule=value;clockPrefs.putString("tz",tzRule);
-        configTzTime(tzRule.c_str(),"pool.ntp.org","time.nist.gov");
-        resetRotation();forceFrame=true;Serial.println("!clock {\"ok\":true}");
+        if(!applyTimezone(value)){Serial.println("!clock {\"ok\":false,\"error\":\"Invalid time zone or settings write failed\"}");return;}
+        Serial.println("!clock {\"ok\":true}");
     } else if (!strcmp(cmd,"reboot")) {
         Serial.println("!clock {\"ok\":true}");Serial.flush();ESP.restart();
     } else Serial.println("!clock {\"ok\":false,\"error\":\"unknown command\"}");
@@ -432,6 +477,7 @@ void setup() {
     ticking=tickVolume>0;
     // Keep the recipient timezone; no owner-specific offset migration.
     tzRule=clockPrefs.getString("tz",tzRule);
+    if(!tzRule.length()||tzRule.length()>80||strspn(tzRule.c_str(),"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789,+-<>:/.")!=tzRule.length())tzRule="UTC0";
     setenv("TZ",tzRule.c_str(),1);tzset();
     Wire.begin(15,14,400000);Wire.setTimeOut(10);seedRtc();
     pinMode(18,INPUT_PULLUP);pinMode(17,INPUT_PULLUP);pinMode(16,INPUT_PULLUP);
@@ -452,8 +498,7 @@ void setup() {
     if (touchPresent) attachInterrupt(digitalPinToInterrupt(11),touchInterrupt,FALLING);
     Serial.printf("[clock] tick audio %s\n",tickAudioBegin(tickVolume) ? "ready":"unavailable");
     if (ticking) tickAudioEnable();
-    WiFi.persistent(false);WiFi.mode(WIFI_STA);WiFi.setAutoReconnect(true);
-    WiFi.begin(); // existing saved network; returns without waiting for association
+    networkBegin(clockPrefs); // own credentials first, preserved stock network as fallback
     sntp_set_time_sync_notification_cb([](struct timeval *){ntpEvent=true;});
     configTzTime(tzRule.c_str(),"pool.ntp.org","time.nist.gov");
     favoritesBegin();groupsScan();refreshRotationCatalog();
@@ -464,6 +509,7 @@ void setup() {
         forceFrame=true;break;
     }
     notifyFavorite();
+    if(networkNeedsSetup())openNetworkSetup();
     Serial.printf("[clock] %s ready, first frame %lu ms, touch %s\n",VERSION,
                   (unsigned long)firstFrameMs,touchPresent ? "present":"absent");
 }
@@ -471,6 +517,11 @@ void setup() {
 void loop() {
     pollSerial();
     groupUploadPoll();
+    uint32_t setupRevision=networkSetupRevision();networkSetupPoll();
+    if(menuView==NETWORK_SETUP_MENU){
+        if(!networkSetupActive())closeMenu();
+        else if(networkSetupRevision()!=setupRevision)menuDirty=true;
+    }
     const int32_t position=detents;
     if (position!=consumedDetents) {
         if(menuOpen){menuChoice=wrapFace(menuChoice,position-consumedDetents,menuCount());menuDirty=true;menuMessage="";menuActivity=millis();}
@@ -478,9 +529,9 @@ void loop() {
         consumedDetents=position;
     }
     const auto event=button.update(digitalRead(16)==LOW,millis());
-    if(event==ClockButton::LONG_PRESS){if(menuOpen){menuOpen=false;forceFrame=true;}else openMenu();}
+    if(event==ClockButton::LONG_PRESS){if(menuOpen){closeMenu();}else openMenu();}
     else if(event==ClockButton::SHORT_PRESS){if(menuOpen)chooseMenu();else toggleFavorite();}
-    if(menuOpen&&millis()-menuActivity>30000){menuOpen=false;forceFrame=true;}
+    if(menuOpen&&menuView!=NETWORK_SETUP_MENU&&millis()-menuActivity>30000){closeMenu();}
     if(menuOpen&&rendererMenuScrolling()&&millis()-lastMenuFrame>=50)menuDirty=true;
     if(menuOpen&&menuDirty)drawMenu();
     pollTouch();

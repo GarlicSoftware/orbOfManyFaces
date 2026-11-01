@@ -36,9 +36,11 @@ class Clock:
                 self.serial.close();raise
 
     def command(self,cmd,timeout=20):
-        readonly=cmd in ('status','hello','groups','audio status','sd status','favorites status','rotation status') or cmd.startswith('sd info ')
+        readonly=cmd in ('status','hello','groups','audio status','sd status','favorites status','rotation status','setup status','time status') or cmd.startswith('sd info ')
         def matches(reply):
             if cmd in ('status','hello'):return 'fw' in reply
+            if cmd=='setup status' or cmd in ('setup start','setup stop'):return 'setup' in reply
+            if cmd=='time status' or cmd.startswith('time at '):return 'time_status' in reply
             if cmd=='favorites status':return 'favorites' in reply
             if cmd=='rotation status' or cmd.startswith('rotation set '):return 'rotation' in reply
             if cmd=='sd status':return 'sd_protocol' in reply
@@ -99,12 +101,16 @@ class Clock:
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('--port',default='COM7')
-    parser.add_argument('action',choices=['status','face','capture','reboot','ticking','volume'])
+    parser.add_argument('action',choices=['status','face','capture','reboot','ticking','volume','time','setup'])
     parser.add_argument('value',nargs='?')
     args=parser.parse_args();clock=Clock(args.port)
     try:
         if args.action=='status':print(json.dumps(clock.command('status'),indent=2))
         elif args.action=='face':print(json.dumps(clock.select(int(args.value)),indent=2))
+        elif args.action=='time':print(json.dumps(clock.command('time status'),indent=2))
+        elif args.action=='setup':
+            if args.value not in (None,'start','stop','status'):parser.error('setup accepts start, stop or status')
+            print(json.dumps(clock.command('setup '+(args.value or 'status')),indent=2))
         elif args.action=='reboot':print(clock.command('reboot'))
         elif args.action in ('ticking','volume'):
             if not args.value:parser.error(args.action+' requires a value')

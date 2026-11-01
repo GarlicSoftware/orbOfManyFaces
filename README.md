@@ -109,17 +109,64 @@ USB maintenance commands include `favorites status`, `favorites toggle`,
 These run the same paths as the knob. Rebuild commands may take a minute or more
 for a large collection; allow a longer serial timeout.
 
+## Wi-Fi and daylight-saving time (development firmware)
+
+Stock firmware is no longer needed to configure a network in development
+firmware 0.7.0. Hold the knob one second, choose **Settings**, then **Wi-Fi & time
+setup**. The Orb shows a temporary network name and password. On your phone:
+
+1. Join the displayed **OrbSetup-…** Wi-Fi network using its displayed password.
+2. Stay connected when the phone warns there is no internet. Open
+   **http://192.168.4.1/** if the setup page does not appear automatically.
+3. Enter your **2.4 GHz** network name and password, then choose **Connect and save
+   Wi-Fi**. The Orb checks the connection for up to 30 seconds before saving it.
+   A failed/cancelled attempt restores the previous connection. Open networks
+   require explicitly checking the no-password option.
+4. Choose the correct regional **Time zone** and save it. This is independent of
+   Wi-Fi; changing only the time zone does not replace network credentials.
+5. Choose **Finish setup**, or press/hold the knob to close setup, then reconnect
+   your phone to its usual Wi-Fi. The hotspot also closes after ten minutes.
+
+With no configured network, setup opens automatically after startup. Otherwise,
+the hotspot, DNS and web server run only while setup is explicitly open. Existing
+stock Wi-Fi remains a fallback; newly verified credentials are stored separately
+in this firmware's NVS namespace. No SD contents, artwork or Favorites change.
+Supported setup is personal/password Wi-Fi or explicitly confirmed open Wi-Fi;
+enterprise authentication and web-login/captive networks are not configured here.
+
+You can also choose **Settings → Time zone** directly on the Orb, without a phone
+or network change. Regional choices include their daylight-saving rules where
+applicable, and explicit fixed-rule options such as Arizona/Yukon/Vancouver
+(UTC−7 year-round). Los Angeles is a separate seasonal Pacific choice. Other regions can enter
+a complete POSIX rule in the web page's advanced field.
+
+**An inherited fixed offset is not a regional time zone.** Stock auto-location
+can leave a rule such as `<-04>4`; it stays UTC−4 through winter. Choose your
+actual region to enable its seasonal transitions. The firmware preserves such
+legacy settings until you choose a region, because a fixed offset is correct in
+many places. UTC/NTP and the hardware RTC stay in UTC; only the display converts
+to the selected local zone. No automatic location lookup is required.
+
+For troubleshooting over USB, `python tools/device.py --port COM7 time` reports
+UTC and local time, the active POSIX rule, offset, DST state and synchronization
+status, without passwords. `python tools/device.py --port COM7 setup start`
+opens the same setup screen; use `setup stop` to close it.
+
+See [Wi-Fi/time validation](docs/network-time-validation.md) for tests and limits.
+
 ## Hardware and preparation
 
 Use the Waveshare **ESP32-S3-Touch-AMOLED-1.75**, with 466x466 CO5300 display,
 16 MB flash, 8 MB PSRAM, CST9217 touch and ES8311 audio. Similar round displays
 and enclosures can contain different boards and require a firmware port.
 
-First use the original [Orb OS](https://github.com/Ziplock78/orb-os) to connect
-the recipient's own Wi-Fi and configure their timezone. This firmware reuses
-those settings and the hardware RTC. It has no Wi-Fi setup screen. If no timezone
-is stored, its fallback is US Eastern; a USB override is available, for example
-`?clock timezone UTC0` at 115200 baud. Existing brightness/orientation are retained.
+Development firmware can configure Wi-Fi and time directly as described above.
+The currently published **v0.5.1** ZIP still requires configuring these through
+the original [Orb OS](https://github.com/Ziplock78/orb-os) first; updating source
+does not replace that release ZIP. Both builds preserve existing brightness,
+orientation and the hardware RTC. If no timezone is stored, the existing fallback
+is US Eastern; select your own region during setup. A USB override remains
+available, for example `?clock timezone UTC0` at 115200 baud.
 
 ## Install the Release ZIP
 

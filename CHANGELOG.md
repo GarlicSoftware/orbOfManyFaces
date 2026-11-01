@@ -1,5 +1,10 @@
 # Unreleased - Favorites development
 
+- Temporary password-protected Wi-Fi/time setup hotspot and phone page; verified
+  credentials saved independently of stock firmware, with failed-trial rollback.
+- On-device regional time-zone selection, explicit DST/no-DST choices and USB
+  UTC/local/offset/DST diagnostics. Legacy fixed offsets are preserved until chosen.
+
 - Favorites builds return to the group menu; the knob hold now takes one second.
 - Reverse knob volume adjustment while preserving group-menu navigation.
 - Independent face and group rotation timers, disabled by default, with saved
