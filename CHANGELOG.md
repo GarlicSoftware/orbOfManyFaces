@@ -1,4 +1,4 @@
-# Unreleased - Favorites development
+# Version 0.7.0 — 2026-11-01
 
 - Portable Windows x64 flasher bundles Python/esptool and the public firmware:
   automatic port detection, chip/flash-size checks, full backup, protected upgrade,

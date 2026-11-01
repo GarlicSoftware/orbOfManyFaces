@@ -1,7 +1,7 @@
 # Wi-Fi and time-zone setup validation
 
-Development firmware 0.7.0 adds setup without requiring stock firmware. The
-published v0.5.1 installer ZIP is unchanged until a new release is published.
+Firmware 0.7.0 adds setup without requiring stock firmware. These checks were
+performed on its development build before publishing v0.7.0.
 
 ## Automated checks
 

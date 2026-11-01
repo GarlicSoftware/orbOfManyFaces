@@ -1,6 +1,6 @@
 # Rotation timer validation
 
-Tested on the development branch with the owner's existing Orb, SD libraries
+Tested on the development branch before release in v0.7.0 with the owner's existing Orb, SD libraries
 and Favorites. No device time was changed to accelerate the hardware tests.
 
 ## Host checks

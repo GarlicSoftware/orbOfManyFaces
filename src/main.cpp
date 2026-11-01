@@ -20,7 +20,7 @@
 #include <vector>
 
 namespace {
-constexpr char VERSION[]="Meridian Clock 0.7.0-dev";
+constexpr char VERSION[]="Meridian Clock 0.7.0";
 constexpr uint8_t RTC=0x51,TOUCH=0x5A;
 Preferences clockPrefs;
 String tzRule;

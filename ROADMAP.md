@@ -1,6 +1,6 @@
 # Development roadmap
 
-## 1. Favorites groups (in development)
+## 1. Favorites groups (released in v0.7.0)
 
 Short knob press toggles the current face without navigating. Save each change
 immediately and independently of generated artwork. A small star appears for two
@@ -47,7 +47,7 @@ faces must participate in Favorites. End users need no Python installation, term
 commands, programming or firmware flashing. Personal importing is separate from
 which artwork may be redistributed in the official release.
 
-## 3. Automatic face rotation (implemented on development branch)
+## 3. Automatic face rotation (released in v0.7.0)
 
 Automatically advance only within the currently selected group, including
 Favorites. Never change groups automatically. Continue within a new group when
@@ -72,10 +72,10 @@ interrupt the group menu, Favorites operations or hourly chime. Define safe
 boundary handling while menus/builds are active so missed intervals never cause
 rapid rotations when normal clock display resumes.
 
-Implemented with the shared Settings menu and timer scheduler on the development
-branch. Both timers default to Off; the public v0.5.1 release is unchanged.
+Released with the shared Settings menu and timer scheduler in v0.7.0.
+Both timers default to Off.
 
-## 4. Automatic group rotation (implemented on development branch)
+## 4. Automatic group rotation (released in v0.7.0)
 
 Allow users to switch clock groups automatically on a configurable timer,
 including Favorites groups. Keep this optional and disabled by default, with
@@ -98,11 +98,10 @@ contents, and avoid interfering with the hourly chime. Use the same interval
 choices as face rotation, with independent Sequential/Shuffle order. On a shared
 boundary the group change wins, opening the new group's first face.
 
-These enhancements are separate from the released v0.5.1 installer. Favorites
-and both timers are on the development branch. The importer remains the next
-major feature; public release packaging is a separate step.
+Favorites and both timers are released in v0.7.0. The importer remains the next
+major feature.
 
-## 5. Simplified installation
+## 5. Simplified installation (Windows released in v0.7.0)
 
 Windows first: a portable GUI flasher with its own private Python runtime,
 automatic port selection, full backup, protected firmware installation, verified

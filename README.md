@@ -4,7 +4,8 @@ A lightweight clock-only firmware for the Waveshare **ESP32-S3-Touch-AMOLED-1.75
 Orb: swipe through clocks, turn the knob for volume, and hear a bell on the hour.
 
 **[Download the installer ZIP from Releases](https://github.com/GarlicSoftware/orbOfManyFaces/releases/latest).**
-Use the ZIP attached under **Assets**. GitHub's **Code > Download ZIP** downloads
+**Windows:** choose `orbOfManyFaces-Flasher-0.7.0-windows-x64.zip` under **Assets**.
+For the manual Python installer, choose `orbOfManyFaces-0.7.0.zip`. GitHub's **Code > Download ZIP** downloads
 source code and does not include the compiled installer images.
 
 ![Meridian Midnight](docs/meridian-midnight.png)
@@ -19,7 +20,7 @@ source code and does not include the compiled installer images.
 | Turn in the menu, then press | Choose a group |
 | Hold again, or wait 30 seconds | Close the menu |
 
-Version **0.5.1** includes eight built-in faces and 34 additional CC0 clock faces
+Version **0.7.0** includes eight built-in faces and 34 additional CC0 clock faces
 in four SD groups: **42 distinct designs**. Blue Meridian is first in every SD
 group and remains available without a card. The other Meridian face is Brass &
 Parchment. Group, face and volume are remembered after restart.
@@ -34,7 +35,7 @@ a count of the hour. It replaces that second's tick. It does not ring on startup
 or replay hours after time synchronization. A short grace window covers group
 loading across the hour. Volume zero mutes the bell and ticks together.
 
-## Rotation timers (development branch)
+## Rotation timers
 
 Hold the knob for one second, turn to **Settings** at the bottom of the group
 menu, and press. Choose **Face rotation**, **Face order**, **Group rotation** or
@@ -64,7 +65,7 @@ and volume controls retain their existing behavior.
 
 See [rotation validation](docs/rotation-validation.md) for host and device checks.
 
-## Favorites (development branch)
+## Favorites
 
 Short-press the knob while a clock is displayed to add/remove that face as a
 favorite. It does not navigate. A filled star confirms adding, an outlined star
@@ -109,9 +110,9 @@ USB maintenance commands include `favorites status`, `favorites toggle`,
 These run the same paths as the knob. Rebuild commands may take a minute or more
 for a large collection; allow a longer serial timeout.
 
-## Wi-Fi and daylight-saving time (development firmware)
+## Wi-Fi and daylight-saving time
 
-Stock firmware is no longer needed to configure a network in development
+Stock firmware is no longer needed to configure a network in
 firmware 0.7.0. Hold the knob one second, choose **Settings**, then **Wi-Fi & time
 setup**. The Orb shows a temporary network name and password. On your phone:
 
@@ -160,17 +161,16 @@ Use the Waveshare **ESP32-S3-Touch-AMOLED-1.75**, with 466x466 CO5300 display,
 16 MB flash, 8 MB PSRAM, CST9217 touch and ES8311 audio. Similar round displays
 and enclosures can contain different boards and require a firmware port.
 
-Development firmware can configure Wi-Fi and time directly as described above.
-The currently published **v0.5.1** ZIP still requires configuring these through
-the original [Orb OS](https://github.com/Ziplock78/orb-os) first; updating source
-does not replace that release ZIP. Both builds preserve existing brightness,
-orientation and the hardware RTC. If no timezone is stored, the existing fallback
+Firmware **0.7.0** can configure Wi-Fi and time directly as described above.
+Older v0.5.1 installations needed the original Orb OS for first-time network
+setup; upgrading removes that requirement. Existing brightness, orientation
+and the hardware RTC are retained. If no timezone is stored, the existing fallback
 is US Eastern; select your own region during setup. A USB override remains
 available, for example `?clock timezone UTC0` at 115200 baud.
 
 ## Install the Release ZIP
 
-### Windows app (development build)
+### Windows app (recommended)
 
 The Windows x64 flasher ZIP is named
 `orbOfManyFaces-Flasher-0.7.0-windows-x64.zip`. It is a portable application: extract
@@ -196,8 +196,7 @@ Backups contain private device settings and stay on the recipient's computer.
 
 Each EXE contains one firmware release. To upgrade later, download that release's
 new flasher. Automatic discovery/download of new releases and a browser flasher
-are future work. This development asset is not yet part of the published v0.5.1
-release. The app is unsigned; Windows may display a publisher/trust prompt.
+are future work. The app is unsigned; Windows may display a publisher/trust prompt.
 
 The ZIP includes license notices and `SOURCE.zip` with flasher/esptool source and
 rebuild instructions. Firmware/artwork licenses are unchanged. Developers build
