@@ -61,7 +61,10 @@ void playback(void *) {
                         const float env=fminf(1.0f,n/64.0f)*expf(-5.5f*t)*fminf(1.0f,(BELL_FRAMES-n)/320.0f);
                         sample=env*(.65f*sinf(2*M_PI*880*t)+.23f*sinf(2*M_PI*1762*t)+.12f*sinf(2*M_PI*2420*t));
                     }
-                    const int16_t value=int16_t(sample*12000*gain/100);
+                    // Twice the v0.7.0 chime amplitude (+6 dB). The harmonic weights
+                    // sum to one, so even at 100% volume the peak stays below 24000
+                    // with headroom inside signed 16-bit PCM. Tick gain is unchanged.
+                    const int16_t value=int16_t(sample*24000*gain/100);
                     chunk[frame*2]=chunk[frame*2+1]=value;
                 }
             } else for (size_t sample=0;sample<count/2;++sample) chunk[sample]=int32_t(packet[offset/2+sample])*gain/100;

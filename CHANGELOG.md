@@ -1,3 +1,10 @@
+# Version 0.7.1 — 2026-11-05
+
+- Double hourly chime signal amplitude (+6 dB) at every nonzero volume setting,
+  with 16-bit PCM headroom. Tick volume and zero-volume mute are unchanged.
+- Windows flasher bundles firmware 0.7.1 for new installations and upgrades;
+  existing backup, settings protection and verified SD installation remain intact.
+
 # Version 0.7.0 — 2026-11-01
 
 - Portable Windows x64 flasher bundles Python/esptool and the public firmware:

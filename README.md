@@ -4,8 +4,8 @@ A lightweight clock-only firmware for the Waveshare **ESP32-S3-Touch-AMOLED-1.75
 Orb: swipe through clocks, turn the knob for volume, and hear a bell on the hour.
 
 **[Download the installer ZIP from Releases](https://github.com/GarlicSoftware/orbOfManyFaces/releases/latest).**
-**Windows:** choose `orbOfManyFaces-Flasher-0.7.0-windows-x64.zip` under **Assets**.
-For the manual Python installer, choose `orbOfManyFaces-0.7.0.zip`. GitHub's **Code > Download ZIP** downloads
+**Windows:** choose `orbOfManyFaces-Flasher-0.7.1-windows-x64.zip` under **Assets**.
+For the manual Python installer, choose `orbOfManyFaces-0.7.1.zip`. GitHub's **Code > Download ZIP** downloads
 source code and does not include the compiled installer images.
 
 ![Meridian Midnight](docs/meridian-midnight.png)
@@ -20,7 +20,7 @@ source code and does not include the compiled installer images.
 | Turn in the menu, then press | Choose a group |
 | Hold again, or wait 30 seconds | Close the menu |
 
-Version **0.7.0** includes eight built-in faces and 34 additional CC0 clock faces
+Version **0.7.1** includes eight built-in faces and 34 additional CC0 clock faces
 in four SD groups: **42 distinct designs**. Blue Meridian is first in every SD
 group and remains available without a card. The other Meridian face is Brass &
 Parchment. Group, face and volume are remembered after restart.
@@ -173,7 +173,7 @@ available, for example `?clock timezone UTC0` at 115200 baud.
 ### Windows app (recommended)
 
 The Windows x64 flasher ZIP is named
-`orbOfManyFaces-Flasher-0.7.0-windows-x64.zip`. It is a portable application: extract
+`orbOfManyFaces-Flasher-0.7.1-windows-x64.zip`. It is a portable application: extract
 the ZIP and double-click **OrbOfManyFaces-Flasher.exe**. Python 3.12, esptool 4.8.1,
 pyserial and the public 42-face firmware/libraries are included. No Python or pip
 installation, administrator privileges, terminal commands or internet download
